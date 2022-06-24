@@ -1,5 +1,3 @@
-get paranoid, f-t-w
-
 implicit using gives access to the following units globally:
 System;
 System.IO;
