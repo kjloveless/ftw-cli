@@ -1,10 +1,10 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-CngKey aliceKey = null;
-byte[] alicePublicKey = null;
-CngKey bobKey = null;
-byte[] bobPublicKey = null;
+CngKey aliceKey;
+byte[] alicePublicKey;
+CngKey bobKey;
+byte[] bobPublicKey;
 
 void CreateKey()
 {
@@ -17,7 +17,7 @@ void CreateKey()
 void BobReceiveData(byte[] data)
 {
     Console.WriteLine("Bob recieves it and starts decrypting...");
-    byte[] rawData = null;
+    byte[] rawData;
 
     using (var aes = AesCng.Create())
     {
