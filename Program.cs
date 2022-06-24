@@ -14,7 +14,7 @@ void CreateKey()
     bobPublicKey = bobKey.Export(CngKeyBlobFormat.EccPublicBlob);
 }
 
-void BobReceiveData(byte[] data)
+void ReceiveData(byte[] data)
 {
     Console.WriteLine("Bob recieves it and starts decrypting...");
     byte[] rawData;
@@ -47,7 +47,7 @@ void BobReceiveData(byte[] data)
     }
 }
 
-void AliceSendMessage(string message)
+void SendMessage(string message)
 {
     byte[] rawData = Encoding.UTF8.GetBytes(message);
     using (ECDiffieHellmanCng cng = new ECDiffieHellmanCng(aliceKey))
@@ -69,7 +69,7 @@ void AliceSendMessage(string message)
                         cs.Write(rawData, 0, rawData.Length);
                         cs.Close();
                         var data = ms.ToArray();
-                        BobReceiveData(data);
+                        ReceiveData(data);
                     }
                     aes.Clear();
                 }
@@ -85,6 +85,6 @@ void Pause()
 }
 
 CreateKey();
-AliceSendMessage("The weather today is good!");
-AliceSendMessage("La la la, f-t-w");
+SendMessage("The weather today is good!");
+SendMessage("La la la, f-t-w");
 Pause();
