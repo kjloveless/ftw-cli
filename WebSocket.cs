@@ -5,6 +5,10 @@ using System.Net.Sockets;
 public class MsgrServer
 {
     TcpClient? socket;
+    NetworkStream? netStream;
+    BinaryReader? reader;
+    BinaryWriter? writer;
+
     public MsgrServer()
     {
         Console.WriteLine("client or server?");
@@ -14,6 +18,12 @@ public class MsgrServer
             case "client": SetupClient("localhost"); break;
             case "server": SetupServer(); break;
         }
+    }
+
+    public void SendMsg(String msg)
+    {
+        if (writer == null) return;
+        writer.Write(msg);
     }
 
     private void SetupServer()
@@ -42,13 +52,14 @@ public class MsgrServer
 
     private void HandleRequest()
     {
-        var netStream = socket.GetStream();
-        var reader = new BinaryReader(netStream);
-        var writer = new BinaryWriter(netStream);
+        netStream = socket.GetStream();
+        reader = new BinaryReader(netStream);
+        writer = new BinaryWriter(netStream);
 
         while (socket.Connected)
         {
             var cmd = reader.ReadString();
+            Console.WriteLine("Client: {0}", cmd);
             switch (cmd)
             {
                 case "chat":

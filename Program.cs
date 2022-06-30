@@ -84,9 +84,18 @@ void Pause()
     Console.Read();
 }
 
-var Server = new MsgrServer();
+MsgrServer msgrServer = new MsgrServer();
+string? text;
 
-CreateKey();
-SendMessage("The weather today is good!");
-SendMessage("La la la, f-t-w");
-Pause();
+while (true) 
+{
+    Console.Write("Send: ");
+    text = Console.ReadLine();
+    if (text == null) break;
+    msgrServer.SendMsg(text);
+};
+
+//CreateKey();
+//SendMessage("The weather today is good!");
+//SendMessage("La la la, f-t-w");
+//Pause();
