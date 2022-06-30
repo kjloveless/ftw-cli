@@ -81,8 +81,10 @@ void SendMessage(string message)
 void Pause()
 {
     Console.WriteLine("Press any button to continue...");
-    Console.ReadKey(true);
+    Console.Read();
 }
+
+var Server = new MsgrServer();
 
 CreateKey();
 SendMessage("The weather today is good!");
