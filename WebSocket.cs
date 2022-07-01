@@ -24,8 +24,13 @@ public class MsgrServer
 
     public void SendMsg(String msg)
     {
-        if (writer == null) return;
-        writer.Write(msg);
+        if (writer is not null) 
+        {
+            writer.Write(msg);
+        } else 
+        {
+            Console.WriteLine("writer not initialized.");
+        }
     }
 
     public List<String> MsgHistory => messages;
@@ -35,6 +40,7 @@ public class MsgrServer
         var listener = new TcpListener(IPAddress.Any, 50001);
         listener.Start();
         socket = listener.AcceptTcpClient();
+        InitComs();
         Task.Run(() => HandleRequest()); 
         Console.WriteLine("Connected to client from {0}...", socket.Client.RemoteEndPoint.ToString());
     }
@@ -44,6 +50,7 @@ public class MsgrServer
         try
         {
             socket = new TcpClient(ip, 50001);
+            InitComs();
             Task.Run(() => HandleRequest());
             Console.WriteLine("Connected to server...");
         }
@@ -54,12 +61,21 @@ public class MsgrServer
 
     }
 
+    private void InitComs()
+    {
+        if (socket is not null)
+        {
+            netStream = socket.GetStream();
+            reader = new BinaryReader(netStream);
+            writer = new BinaryWriter(netStream);
+        } else
+        {
+            Console.WriteLine("Socket not initialized.");
+        }
+    }
+
     private void HandleRequest()
     {
-        netStream = socket.GetStream();
-        reader = new BinaryReader(netStream);
-        writer = new BinaryWriter(netStream);
-
         while (socket.Connected)
         {         
             var cmd = reader.ReadString();
