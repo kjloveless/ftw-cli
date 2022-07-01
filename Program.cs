@@ -81,10 +81,21 @@ void SendMessage(string message)
 void Pause()
 {
     Console.WriteLine("Press any button to continue...");
-    Console.ReadKey(true);
+    Console.Read();
 }
 
-CreateKey();
-SendMessage("The weather today is good!");
-SendMessage("La la la, f-t-w");
-Pause();
+MsgrServer msgrServer = new MsgrServer();
+string? text;
+
+while (true) 
+{
+    Console.Write("Send: ");
+    text = Console.ReadLine();
+    if (text == null) break;
+    msgrServer.SendMsg(text);
+};
+
+//CreateKey();
+//SendMessage("The weather today is good!");
+//SendMessage("La la la, f-t-w");
+//Pause();
