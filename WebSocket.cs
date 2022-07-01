@@ -68,7 +68,7 @@ public class MsgrServer
         }
     }
 
-    public void SendMsg(String msg, bool encrypt = false)
+    public void SendMsg(String msg, bool encrypt = true)
     {
         while (!handleStarted) continue;
         if (writer is not null) 
@@ -101,7 +101,7 @@ public class MsgrServer
         InitComs();
         Task.Run(() => HandleRequest()); 
         Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint.ToString()}...");
-        SendMsg($"ECC_PUB_KEY_{Encoding.UTF8.GetString(localPublicKey)}", true);
+        SendMsg($"ECC_PUB_KEY_{Encoding.UTF8.GetString(localPublicKey)}", false);
     }
 
     private void SetupClient(String ip)
@@ -110,7 +110,7 @@ public class MsgrServer
         {
             socket = new TcpClient(ip, 50001);
             InitComs();
-            SendMsg($"ECC_PUB_KEY_{Encoding.UTF8.GetString(localPublicKey)}", true);
+            SendMsg($"ECC_PUB_KEY_{Encoding.UTF8.GetString(localPublicKey)}", false);
             Console.WriteLine("Connected to server...");
         }
         catch (SocketException e)
