@@ -14,14 +14,15 @@ public class MsgrServer
     CngKey localKey;
     byte[] localPublicKey;
     // CngKey bobKey;
-    public byte[] remotePublicKey;
+    byte[]? remotePublicKey;
     bool handleStarted;
 
     public MsgrServer()
     {   
         Console.Clear();
         messages = new List<String>();     
-        CreateKey();   
+        localKey = CngKey.Create(CngAlgorithm.ECDiffieHellmanP256);
+        localPublicKey = localKey.Export(CngKeyBlobFormat.EccPublicBlob);   
         Console.WriteLine("client or server?");
         String? Line = Console.ReadLine();
         switch (Line)
@@ -31,40 +32,38 @@ public class MsgrServer
         }
     }
 
-    private void CreateKey()
-    {
-        localKey = CngKey.Create(CngAlgorithm.ECDiffieHellmanP256);
-        localPublicKey = localKey.Export(CngKeyBlobFormat.EccPublicBlob);
-    }
-
-    private string EncryptMessage(string message)
+    private string? EncryptMessage(string message)
     {
         byte[] rawData = Encoding.UTF8.GetBytes(message);
         using (ECDiffieHellmanCng cng = new ECDiffieHellmanCng(localKey))
         {
-            using (CngKey remoteKey = CngKey.Import(remotePublicKey, CngKeyBlobFormat.EccPublicBlob))
+            if (remotePublicKey is not null)
             {
-                var sumKey = cng.DeriveKeyMaterial(remoteKey);
-
-                using (var aes = AesCng.Create())
+                using (CngKey remoteKey = CngKey.Import(remotePublicKey, CngKeyBlobFormat.EccPublicBlob))
                 {
-                    aes.Key = sumKey;
-                    aes.GenerateIV();
-                    using (ICryptoTransform encryptor = aes.CreateEncryptor())
+                    var sumKey = cng.DeriveKeyMaterial(remoteKey);
+
+                    using (var aes = AesCng.Create())
                     {
-                        using (MemoryStream ms = new MemoryStream())
+                        aes.Key = sumKey;
+                        aes.GenerateIV();
+                        using (ICryptoTransform encryptor = aes.CreateEncryptor())
                         {
-                            var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
-                            ms.Write(aes.IV, 0, aes.IV.Length);
-                            cs.Write(rawData, 0, rawData.Length);
-                            cs.Close();
-                            var data = ms.ToArray();
-                            aes.Clear();
-                            return ms.ToString();
+                            using (MemoryStream ms = new MemoryStream())
+                            {
+                                var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
+                                ms.Write(aes.IV, 0, aes.IV.Length);
+                                cs.Write(rawData, 0, rawData.Length);
+                                cs.Close();
+                                var data = ms.ToArray();
+                                aes.Clear();
+                                return ms.ToString();
+                            }
                         }
                     }
                 }
             }
+            return null;
         }
     }
 
@@ -99,8 +98,7 @@ public class MsgrServer
         listener.Start();
         socket = listener.AcceptTcpClient();
         InitComs();
-        Task.Run(() => HandleRequest()); 
-        Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint.ToString()}...");
+        Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
         SendMsg($"ECC_PUB_KEY_{Encoding.UTF8.GetString(localPublicKey)}", false);
     }
 
@@ -128,8 +126,7 @@ public class MsgrServer
             reader = new BinaryReader(netStream);
             writer = new BinaryWriter(netStream);
 
-            var handleThread= new Thread(HandleRequest);
-            handleThread.Start();
+            Task.Run(() => HandleRequest()); 
         } else
         {
             Console.WriteLine("Socket not initialized.");
@@ -139,11 +136,11 @@ public class MsgrServer
     private void HandleRequest()
     {
         handleStarted = true;
-        while (socket.Connected)
+        while (socket is not null && socket.Connected)
         {         
-            var cmd = reader.ReadString();
+            var cmd = reader?.ReadString();
             Console.Clear();
-            if (cmd.StartsWith("ECC_PUB_KEY_"))
+            if (cmd is not null && cmd.StartsWith("ECC_PUB_KEY_"))
             {
                 remotePublicKey = Encoding.UTF8.GetBytes(cmd.Split("ECC_PUB_KEY_")[1]);
             } else

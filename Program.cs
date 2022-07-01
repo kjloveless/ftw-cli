@@ -39,11 +39,11 @@ using System.Text;
 //     
 // }
 
-void Pause()
-{
-    Console.WriteLine("Press any button to continue...");
-    Console.Read();
-}
+// void Pause()
+// {
+//     Console.WriteLine("Press any button to continue...");
+//     Console.Read();
+// }
 
 MsgrServer msgrServer = new MsgrServer();
 string? text;
@@ -53,7 +53,6 @@ while (true)
     Console.Write("Send: ");
     text = Console.ReadLine();
     msgrServer.MsgHistory.Add($"Send: {text}");
-    Console.WriteLine(Encoding.UTF8.GetString(msgrServer.remotePublicKey));
     if (text == null) break;
     msgrServer.SendMsg(text);
 };
