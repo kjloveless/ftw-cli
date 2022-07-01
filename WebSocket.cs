@@ -29,7 +29,14 @@ public class MsgrServer
             writer.Write(msg);
         } else 
         {
-            Console.WriteLine("writer not initialized.");
+            InitComs();
+            if (writer is not null)
+            {
+                writer.Write(msg);
+            } else
+            {
+                Console.WriteLine("writer not initialized.");
+            }
         }
     }
 
