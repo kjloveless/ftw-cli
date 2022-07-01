@@ -91,6 +91,7 @@ while (true)
 {
     Console.Write("Send: ");
     text = Console.ReadLine();
+    msgrServer.MsgHistory.Add(String.Format("Send: {0}", text));
     if (text == null) break;
     msgrServer.SendMsg(text);
 };
