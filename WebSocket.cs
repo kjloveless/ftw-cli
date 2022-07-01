@@ -42,7 +42,7 @@ public class MsgrServer
         socket = listener.AcceptTcpClient();
         InitComs();
         Task.Run(() => HandleRequest()); 
-        Console.WriteLine("Connected to client from {0}...", socket.Client.RemoteEndPoint.ToString());
+        Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint.ToString()}...");
     }
 
     private void SetupClient(String ip)
@@ -79,7 +79,7 @@ public class MsgrServer
         while (socket.Connected)
         {         
             var cmd = reader.ReadString();
-            messages.Add(String.Format("Client: {0}", cmd));
+            messages.Add($"Client: {cmd}");
             Console.Clear();
             foreach (var msg in messages)
             {
