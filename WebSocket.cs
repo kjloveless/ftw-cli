@@ -8,9 +8,11 @@ public class MsgrServer
     NetworkStream? netStream;
     BinaryReader? reader;
     BinaryWriter? writer;
+    List<String> messages; 
 
     public MsgrServer()
-    {
+    {   
+        messages = new List<String>();        
         Console.WriteLine("client or server?");
         String? Line = Console.ReadLine();
         switch (Line)
@@ -25,6 +27,8 @@ public class MsgrServer
         if (writer == null) return;
         writer.Write(msg);
     }
+
+    public List<String> MsgHistory => messages;
 
     private void SetupServer()
     {
@@ -57,13 +61,19 @@ public class MsgrServer
         writer = new BinaryWriter(netStream);
 
         while (socket.Connected)
-        {
+        {         
             var cmd = reader.ReadString();
-            Console.WriteLine("Client: {0}", cmd);
+            messages.Add(String.Format("Client: {0}", cmd));
+            Console.Clear();
+            foreach (var msg in messages)
+            {
+                Console.WriteLine(msg);
+            }
+
+            Console.Write("Send: ");
+
             switch (cmd)
             {
-                case "chat":
-                    break;
                 case "exit":
                     socket.Close();
                     break;
