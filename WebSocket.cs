@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
 
 public class MsgrServer
 {
@@ -9,10 +11,17 @@ public class MsgrServer
     BinaryReader? reader;
     BinaryWriter? writer;
     List<String> messages; 
+    CngKey localKey;
+    byte[] localPublicKey;
+    // CngKey bobKey;
+    public byte[] remotePublicKey;
+    bool handleStarted;
 
     public MsgrServer()
     {   
-        messages = new List<String>();        
+        Console.Clear();
+        messages = new List<String>();     
+        CreateKey();   
         Console.WriteLine("client or server?");
         String? Line = Console.ReadLine();
         switch (Line)
@@ -22,10 +31,52 @@ public class MsgrServer
         }
     }
 
-    public void SendMsg(String msg)
+    private void CreateKey()
     {
+        localKey = CngKey.Create(CngAlgorithm.ECDiffieHellmanP256);
+        localPublicKey = localKey.Export(CngKeyBlobFormat.EccPublicBlob);
+    }
+
+    private string EncryptMessage(string message)
+    {
+        byte[] rawData = Encoding.UTF8.GetBytes(message);
+        using (ECDiffieHellmanCng cng = new ECDiffieHellmanCng(localKey))
+        {
+            using (CngKey remoteKey = CngKey.Import(remotePublicKey, CngKeyBlobFormat.EccPublicBlob))
+            {
+                var sumKey = cng.DeriveKeyMaterial(remoteKey);
+
+                using (var aes = AesCng.Create())
+                {
+                    aes.Key = sumKey;
+                    aes.GenerateIV();
+                    using (ICryptoTransform encryptor = aes.CreateEncryptor())
+                    {
+                        using (MemoryStream ms = new MemoryStream())
+                        {
+                            var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
+                            ms.Write(aes.IV, 0, aes.IV.Length);
+                            cs.Write(rawData, 0, rawData.Length);
+                            cs.Close();
+                            var data = ms.ToArray();
+                            aes.Clear();
+                            return ms.ToString();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void SendMsg(String msg, bool encrypt = false)
+    {
+        while (!handleStarted) continue;
         if (writer is not null) 
         {
+            if (encrypt)
+            {
+                // msg = EncryptMessage(msg);
+            }
             writer.Write(msg);
         } else 
         {
@@ -50,6 +101,7 @@ public class MsgrServer
         InitComs();
         Task.Run(() => HandleRequest()); 
         Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint.ToString()}...");
+        SendMsg($"ECC_PUB_KEY_{Encoding.UTF8.GetString(localPublicKey)}", true);
     }
 
     private void SetupClient(String ip)
@@ -58,7 +110,7 @@ public class MsgrServer
         {
             socket = new TcpClient(ip, 50001);
             InitComs();
-            Task.Run(() => HandleRequest());
+            SendMsg($"ECC_PUB_KEY_{Encoding.UTF8.GetString(localPublicKey)}", true);
             Console.WriteLine("Connected to server...");
         }
         catch (SocketException e)
@@ -75,6 +127,9 @@ public class MsgrServer
             netStream = socket.GetStream();
             reader = new BinaryReader(netStream);
             writer = new BinaryWriter(netStream);
+
+            var handleThread= new Thread(HandleRequest);
+            handleThread.Start();
         } else
         {
             Console.WriteLine("Socket not initialized.");
@@ -83,11 +138,19 @@ public class MsgrServer
 
     private void HandleRequest()
     {
+        handleStarted = true;
         while (socket.Connected)
         {         
             var cmd = reader.ReadString();
-            messages.Add($"Client: {cmd}");
             Console.Clear();
+            if (cmd.StartsWith("ECC_PUB_KEY_"))
+            {
+                remotePublicKey = Encoding.UTF8.GetBytes(cmd.Split("ECC_PUB_KEY_")[1]);
+            } else
+            {
+                messages.Add(String.Format("Client: {0}", cmd));
+            }
+            
             foreach (var msg in messages)
             {
                 Console.WriteLine(msg);
