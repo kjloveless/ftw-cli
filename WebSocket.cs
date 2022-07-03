@@ -13,6 +13,7 @@ public class MsgrServer
     List<String> messages; 
     CngKey localKey;
     byte[] localPublicKey;
+    string? localPublicKey_b64;
     // CngKey bobKey;
     byte[]? remotePublicKey;
     bool handleStarted;
@@ -22,7 +23,9 @@ public class MsgrServer
         Console.Clear();
         messages = new List<String>();     
         localKey = CngKey.Create(CngAlgorithm.ECDiffieHellmanP256);
-        localPublicKey = localKey.Export(CngKeyBlobFormat.EccPublicBlob);   
+        localPublicKey = localKey.Export(CngKeyBlobFormat.EccPublicBlob); 
+        localPublicKey_b64 = System.Convert.ToBase64String(localPublicKey);
+        Console.WriteLine($"local_pub_ley => {Encoding.Default.GetString(localPublicKey)}");
         Console.WriteLine("client or server?");
         String? Line = Console.ReadLine();
         switch (Line)
@@ -32,9 +35,41 @@ public class MsgrServer
         }
     }
 
+    private string DecryptMessage(string ciphertext)
+    {
+        byte[] data = Encoding.Default.GetBytes(ciphertext);
+        byte[] rawData;
+
+        using (var aes = AesCng.Create())
+        {
+            var ivLength = aes.BlockSize >> 3;
+            byte[] ivData = new byte[ivLength];
+            Array.Copy(data, ivData, ivLength);
+
+            using (ECDiffieHellmanCng cng = new ECDiffieHellmanCng(localKey))
+            {
+                using (CngKey remoteKey = CngKey.Import(remotePublicKey, CngKeyBlobFormat.EccPublicBlob))
+                {
+                    var sumKey = cng.DeriveKeyMaterial(remoteKey);
+                    aes.Key = sumKey;
+                    aes.IV = ivData;
+                    using (ICryptoTransform decryptor = aes.CreateDecryptor())
+                    using (MemoryStream ms = new MemoryStream())
+                    {
+                        var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Write);
+                        cs.Write(data, ivLength, data.Length - ivLength);
+                        cs.Close();
+                        rawData = ms.ToArray();
+                        return Encoding.Default.GetString(rawData);
+                    }
+                }
+            }
+        }
+    }
+
     private string? EncryptMessage(string message)
     {
-        byte[] rawData = Encoding.UTF8.GetBytes(message);
+        byte[] rawData = Encoding.Default.GetBytes(message);
         using (ECDiffieHellmanCng cng = new ECDiffieHellmanCng(localKey))
         {
             if (remotePublicKey is not null)
@@ -57,7 +92,7 @@ public class MsgrServer
                                 cs.Close();
                                 var data = ms.ToArray();
                                 aes.Clear();
-                                return ms.ToString();
+                                return Encoding.Default.GetString(data);
                             }
                         }
                     }
@@ -67,14 +102,14 @@ public class MsgrServer
         }
     }
 
-    public void SendMsg(String msg, bool encrypt = true)
+    public void SendMsg(string? msg, bool encrypt = true)
     {
         while (!handleStarted) continue;
-        if (writer is not null) 
+        if ((writer is not null) && (msg is not null)) 
         {
             if (encrypt)
             {
-                // msg = EncryptMessage(msg);
+                msg = EncryptMessage(msg);
             }
             writer.Write(msg);
         } else 
@@ -99,7 +134,7 @@ public class MsgrServer
         socket = listener.AcceptTcpClient();
         InitComs();
         Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
-        SendMsg($"ECC_PUB_KEY_{Encoding.UTF8.GetString(localPublicKey)}", false);
+        SendMsg($"ECC_PUB_KEY_{localPublicKey_b64}", false);
     }
 
     private void SetupClient(String ip)
@@ -108,7 +143,7 @@ public class MsgrServer
         {
             socket = new TcpClient(ip, 50001);
             InitComs();
-            SendMsg($"ECC_PUB_KEY_{Encoding.UTF8.GetString(localPublicKey)}", false);
+            SendMsg($"ECC_PUB_KEY_{localPublicKey_b64}", false);
             Console.WriteLine("Connected to server...");
         }
         catch (SocketException e)
@@ -142,9 +177,12 @@ public class MsgrServer
             Console.Clear();
             if (cmd is not null && cmd.StartsWith("ECC_PUB_KEY_"))
             {
-                remotePublicKey = Encoding.UTF8.GetBytes(cmd.Split("ECC_PUB_KEY_")[1]);
+                Console.WriteLine(cmd);
+                remotePublicKey = System.Convert.FromBase64String(cmd.Split("ECC_PUB_KEY_")[1]);
+                Console.WriteLine(Encoding.Default.GetString(remotePublicKey));
             } else
             {
+                // cmd = DecryptMessage(cmd);
                 messages.Add(String.Format("Client: {0}", cmd));
             }
             
