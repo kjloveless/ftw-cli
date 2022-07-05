@@ -18,16 +18,22 @@ public class MsgrServer
     byte[]? remotePublicKey;
     bool handleStarted;
 
-    public MsgrServer()
+    public MsgrServer(string arg = "")
     {   
-        Console.Clear();
+        // Console.Clear();
         messages = new List<String>();     
         localKey = CngKey.Create(CngAlgorithm.ECDiffieHellmanP256);
         localPublicKey = localKey.Export(CngKeyBlobFormat.EccPublicBlob); 
         localPublicKey_b64 = System.Convert.ToBase64String(localPublicKey);
         Console.WriteLine($"local_pub_ley => {Encoding.Default.GetString(localPublicKey)}");
         Console.WriteLine("client or server?");
-        String? Line = Console.ReadLine();
+        String? Line;
+        if (arg != "") Line = arg;
+        else
+        {
+            Line = Console.ReadLine();
+        }
+        
         switch (Line)
         {
             case "client": SetupClient("localhost"); break;
@@ -58,7 +64,7 @@ public class MsgrServer
                     {
                         var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Write);
                         cs.Write(data, ivLength, data.Length - ivLength);
-                        cs.Close();
+                        // cs.Close();
                         rawData = ms.ToArray();
                         return Encoding.Default.GetString(rawData);
                     }
@@ -174,15 +180,15 @@ public class MsgrServer
         while (socket is not null && socket.Connected)
         {         
             var cmd = reader?.ReadString();
-            Console.Clear();
+            // Console.Clear();
             if (cmd is not null && cmd.StartsWith("ECC_PUB_KEY_"))
             {
-                Console.WriteLine(cmd);
+                // Console.WriteLine(cmd);
                 remotePublicKey = System.Convert.FromBase64String(cmd.Split("ECC_PUB_KEY_")[1]);
-                Console.WriteLine(Encoding.Default.GetString(remotePublicKey));
+                // Console.WriteLine(Encoding.Default.GetString(remotePublicKey));
             } else
             {
-                // cmd = DecryptMessage(cmd);
+                cmd = DecryptMessage(cmd);
                 messages.Add(String.Format("Client: {0}", cmd));
             }
             

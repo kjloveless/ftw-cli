@@ -17,7 +17,14 @@ using System.Text;
 //     Console.Read();
 // }
 
-MsgrServer msgrServer = new MsgrServer();
+MsgrServer msgrServer;
+if (args is not null && args.Count() > 0 && args[0] is not null) 
+{ 
+    msgrServer = new MsgrServer(args[0]);
+}
+else {
+    msgrServer = new MsgrServer();
+}
 string? text;
 
 while (true) 
