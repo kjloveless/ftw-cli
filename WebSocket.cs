@@ -25,7 +25,6 @@ public class MsgrServer
         localKey = CngKey.Create(CngAlgorithm.ECDiffieHellmanP256);
         localPublicKey = localKey.Export(CngKeyBlobFormat.EccPublicBlob); 
         localPublicKey_b64 = System.Convert.ToBase64String(localPublicKey);
-        Console.WriteLine($"local_pub_ley => {Encoding.UTF8.GetString(localPublicKey)}");
         Console.WriteLine("client or server?");
         String? Line;
         if (arg != "") Line = arg;
@@ -36,7 +35,7 @@ public class MsgrServer
         
         switch (Line)
         {
-            case "client": SetupClient("localhost"); break;
+            case "client": SetupClient(); break;
             case "server": SetupServer(); break;
         }
     }
@@ -96,7 +95,6 @@ public class MsgrServer
                                 cs.Close();
                                 var data = ms.ToArray();
                                 
-                                Console.WriteLine(Encoding.UTF8.GetString(data));
                                 return System.Convert.ToBase64String(data);
                             }
                             aes.Clear();
@@ -141,11 +139,21 @@ public class MsgrServer
         SendMsg($"ECC_PUB_KEY_{localPublicKey_b64}", false);
     }
 
-    private void SetupClient(String ip)
+    private void SetupClient(String ip = "")
     {
         try
         {
-            socket = new TcpClient(ip, 50001);
+            Console.WriteLine("Enter an IP address to connect to...");
+            ip = Console.ReadLine();
+            if (ip != "localhost") 
+            {
+                socket = new TcpClient();
+                socket.Connect(IPAddress.Parse(ip), 50001);    
+            }
+            else
+            {
+                socket = new TcpClient(ip, 50001);
+            }
             InitComs();
             SendMsg($"ECC_PUB_KEY_{localPublicKey_b64}", false);
             Console.WriteLine("Connected to server...");
@@ -178,12 +186,10 @@ public class MsgrServer
         while (socket is not null && socket.Connected)
         {         
             var cmd = reader?.ReadString();
-            // Console.Clear();
+            Console.Clear();
             if (cmd is not null && cmd.StartsWith("ECC_PUB_KEY_"))
             {
-                // Console.WriteLine(cmd);
                 remotePublicKey = System.Convert.FromBase64String(cmd.Split("ECC_PUB_KEY_")[1]);
-                Console.WriteLine(Encoding.UTF8.GetString(remotePublicKey));
             } else
             {
                 cmd = DecryptMessage(cmd);
