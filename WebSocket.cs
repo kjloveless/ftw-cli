@@ -25,7 +25,7 @@ public class MsgrServer
         localKey = CngKey.Create(CngAlgorithm.ECDiffieHellmanP256);
         localPublicKey = localKey.Export(CngKeyBlobFormat.EccPublicBlob); 
         localPublicKey_b64 = System.Convert.ToBase64String(localPublicKey);
-        Console.WriteLine($"local_pub_ley => {Encoding.Default.GetString(localPublicKey)}");
+        Console.WriteLine($"local_pub_ley => {Encoding.UTF8.GetString(localPublicKey)}");
         Console.WriteLine("client or server?");
         String? Line;
         if (arg != "") Line = arg;
@@ -43,7 +43,7 @@ public class MsgrServer
 
     private string DecryptMessage(string ciphertext)
     {
-        byte[] data = Encoding.Default.GetBytes(ciphertext);
+        byte[] data = System.Convert.FromBase64String(ciphertext);
         byte[] rawData;
 
         using (var aes = AesCng.Create())
@@ -64,9 +64,9 @@ public class MsgrServer
                     {
                         var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Write);
                         cs.Write(data, ivLength, data.Length - ivLength);
-                        // cs.Close();
+                        cs.Close();
                         rawData = ms.ToArray();
-                        return Encoding.Default.GetString(rawData);
+                        return Encoding.UTF8.GetString(rawData);
                     }
                 }
             }
@@ -75,11 +75,9 @@ public class MsgrServer
 
     private string? EncryptMessage(string message)
     {
-        byte[] rawData = Encoding.Default.GetBytes(message);
+        byte[] rawData = Encoding.UTF8.GetBytes(message);
         using (ECDiffieHellmanCng cng = new ECDiffieHellmanCng(localKey))
         {
-            if (remotePublicKey is not null)
-            {
                 using (CngKey remoteKey = CngKey.Import(remotePublicKey, CngKeyBlobFormat.EccPublicBlob))
                 {
                     var sumKey = cng.DeriveKeyMaterial(remoteKey);
@@ -97,14 +95,14 @@ public class MsgrServer
                                 cs.Write(rawData, 0, rawData.Length);
                                 cs.Close();
                                 var data = ms.ToArray();
-                                aes.Clear();
-                                return Encoding.Default.GetString(data);
+                                
+                                Console.WriteLine(Encoding.UTF8.GetString(data));
+                                return System.Convert.ToBase64String(data);
                             }
+                            aes.Clear();
                         }
                     }
                 }
-            }
-            return null;
         }
     }
 
@@ -185,7 +183,7 @@ public class MsgrServer
             {
                 // Console.WriteLine(cmd);
                 remotePublicKey = System.Convert.FromBase64String(cmd.Split("ECC_PUB_KEY_")[1]);
-                // Console.WriteLine(Encoding.Default.GetString(remotePublicKey));
+                Console.WriteLine(Encoding.UTF8.GetString(remotePublicKey));
             } else
             {
                 cmd = DecryptMessage(cmd);
