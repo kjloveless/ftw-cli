@@ -116,14 +116,7 @@ public class MsgrServer
             writer.Write(msg);
         } else 
         {
-            InitComs();
-            if (writer is not null)
-            {
-                writer.Write(msg);
-            } else
-            {
-                Console.WriteLine("writer not initialized.");
-            }
+            Console.WriteLine("writer not initialized.");
         }
     }
 
