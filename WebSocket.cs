@@ -2,20 +2,19 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace ftw_msgr.WebSocket;
-
 public class MsgrServer
 {
     TcpClient? socket;
     NetworkStream? netStream;
     BinaryReader? reader;
-    private BinaryWriter? writer;
+    BinaryWriter? writer;
+    List<String> messages; 
 
     public MsgrServer()
-    {
-        MsgHistory = new List<string>();
+    {   
+        messages = new List<String>();        
         Console.WriteLine("client or server?");
-        string? Line = Console.ReadLine();
+        String? Line = Console.ReadLine();
         switch (Line)
         {
             case "client": SetupClient("localhost"); break;
@@ -23,27 +22,18 @@ public class MsgrServer
         }
     }
 
-    public void SendMsg(string msg)
+    public void SendMsg(String msg)
     {
-        if (writer is not null)
+        if (writer is not null) 
         {
             writer.Write(msg);
-        }
-        else
+        } else 
         {
-            InitComs();
-            if (writer is not null)
-            {
-                writer.Write(msg);
-            }
-            else
-            {
-                Console.WriteLine("writer not initialized.");
-            }
+            Console.WriteLine("writer not initialized.");
         }
     }
 
-    public List<string> MsgHistory { get; }
+    public List<String> MsgHistory => messages;
 
     private void SetupServer()
     {
@@ -51,11 +41,11 @@ public class MsgrServer
         listener.Start();
         socket = listener.AcceptTcpClient();
         InitComs();
-        Task.Run(() => HandleRequest());
-        Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint}...");
+        Task.Run(() => HandleRequest()); 
+        Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint.ToString()}...");
     }
 
-    private void SetupClient(string ip)
+    private void SetupClient(String ip)
     {
         try
         {
@@ -78,8 +68,7 @@ public class MsgrServer
             netStream = socket.GetStream();
             reader = new BinaryReader(netStream);
             writer = new BinaryWriter(netStream);
-        }
-        else
+        } else
         {
             Console.WriteLine("Socket not initialized.");
         }
@@ -87,16 +76,12 @@ public class MsgrServer
 
     private void HandleRequest()
     {
-        if (socket is null) return;
-
         while (socket.Connected)
-        {
-            if (reader is null) break;
-
+        {         
             var cmd = reader.ReadString();
-            MsgHistory.Add($"Client: {cmd}");
+            messages.Add($"Client: {cmd}");
             Console.Clear();
-            foreach (var msg in MsgHistory)
+            foreach (var msg in messages)
             {
                 Console.WriteLine(msg);
             }
