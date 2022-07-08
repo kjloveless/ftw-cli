@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
 
 public class MsgrServer
 {
@@ -9,23 +11,108 @@ public class MsgrServer
     BinaryReader? reader;
     BinaryWriter? writer;
     List<String> messages; 
+    CngKey localKey;
+    byte[] localPublicKey;
+    string? localPublicKey_b64;
+    // CngKey bobKey;
+    byte[]? remotePublicKey;
+    bool handleStarted;
 
-    public MsgrServer()
+    public MsgrServer(string arg = "")
     {   
-        messages = new List<String>();        
+        // Console.Clear();
+        messages = new List<String>();     
+        localKey = CngKey.Create(CngAlgorithm.ECDiffieHellmanP256);
+        localPublicKey = localKey.Export(CngKeyBlobFormat.EccPublicBlob); 
+        localPublicKey_b64 = System.Convert.ToBase64String(localPublicKey);
         Console.WriteLine("client or server?");
-        String? Line = Console.ReadLine();
+        String? Line;
+        if (arg != "") Line = arg;
+        else
+        {
+            Line = Console.ReadLine();
+        }
+        
         switch (Line)
         {
-            case "client": SetupClient("localhost"); break;
+            case "client": SetupClient(); break;
             case "server": SetupServer(); break;
         }
     }
 
-    public void SendMsg(String msg)
+    private string DecryptMessage(string ciphertext)
     {
-        if (writer is not null) 
+        byte[] data = System.Convert.FromBase64String(ciphertext);
+        byte[] rawData;
+
+        using (var aes = AesCng.Create())
         {
+            var ivLength = aes.BlockSize >> 3;
+            byte[] ivData = new byte[ivLength];
+            Array.Copy(data, ivData, ivLength);
+
+            using (ECDiffieHellmanCng cng = new ECDiffieHellmanCng(localKey))
+            {
+                using (CngKey remoteKey = CngKey.Import(remotePublicKey, CngKeyBlobFormat.EccPublicBlob))
+                {
+                    var sumKey = cng.DeriveKeyMaterial(remoteKey);
+                    aes.Key = sumKey;
+                    aes.IV = ivData;
+                    using (ICryptoTransform decryptor = aes.CreateDecryptor())
+                    using (MemoryStream ms = new MemoryStream())
+                    {
+                        var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Write);
+                        cs.Write(data, ivLength, data.Length - ivLength);
+                        cs.Close();
+                        rawData = ms.ToArray();
+                        return Encoding.UTF8.GetString(rawData);
+                    }
+                }
+            }
+        }
+    }
+
+    private string? EncryptMessage(string message)
+    {
+        byte[] rawData = Encoding.UTF8.GetBytes(message);
+        using (ECDiffieHellmanCng cng = new ECDiffieHellmanCng(localKey))
+        {
+                using (CngKey remoteKey = CngKey.Import(remotePublicKey, CngKeyBlobFormat.EccPublicBlob))
+                {
+                    var sumKey = cng.DeriveKeyMaterial(remoteKey);
+
+                    using (var aes = AesCng.Create())
+                    {
+                        aes.Key = sumKey;
+                        aes.GenerateIV();
+                        using (ICryptoTransform encryptor = aes.CreateEncryptor())
+                        {
+                            using (MemoryStream ms = new MemoryStream())
+                            {
+                                var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
+                                ms.Write(aes.IV, 0, aes.IV.Length);
+                                cs.Write(rawData, 0, rawData.Length);
+                                cs.Close();
+                                var data = ms.ToArray();
+                                
+                                return System.Convert.ToBase64String(data);
+                            }
+                            aes.Clear();
+                        }
+                    }
+                }
+        }
+    }
+
+    public void SendMsg(string? msg, bool encrypt = true)
+    {
+        while (!handleStarted) continue;
+        if ((writer is not null) && (msg is not null)) 
+        {
+            if (encrypt)
+            {
+                msg = EncryptMessage(msg);
+            }
             writer.Write(msg);
         } else 
         {
@@ -41,17 +128,27 @@ public class MsgrServer
         listener.Start();
         socket = listener.AcceptTcpClient();
         InitComs();
-        Task.Run(() => HandleRequest()); 
-        Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint.ToString()}...");
+        Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
+        SendMsg($"ECC_PUB_KEY_{localPublicKey_b64}", false);
     }
 
-    private void SetupClient(String ip)
+    private void SetupClient(String ip = "")
     {
         try
         {
-            socket = new TcpClient(ip, 50001);
+            Console.WriteLine("Enter an IP address to connect to...");
+            ip = Console.ReadLine();
+            if (ip != "localhost") 
+            {
+                socket = new TcpClient();
+                socket.Connect(IPAddress.Parse(ip), 50001);    
+            }
+            else
+            {
+                socket = new TcpClient(ip, 50001);
+            }
             InitComs();
-            Task.Run(() => HandleRequest());
+            SendMsg($"ECC_PUB_KEY_{localPublicKey_b64}", false);
             Console.WriteLine("Connected to server...");
         }
         catch (SocketException e)
@@ -68,6 +165,8 @@ public class MsgrServer
             netStream = socket.GetStream();
             reader = new BinaryReader(netStream);
             writer = new BinaryWriter(netStream);
+
+            Task.Run(() => HandleRequest()); 
         } else
         {
             Console.WriteLine("Socket not initialized.");
@@ -76,11 +175,20 @@ public class MsgrServer
 
     private void HandleRequest()
     {
-        while (socket.Connected)
+        handleStarted = true;
+        while (socket is not null && socket.Connected)
         {         
-            var cmd = reader.ReadString();
-            messages.Add($"Client: {cmd}");
+            var cmd = reader?.ReadString();
             Console.Clear();
+            if (cmd is not null && cmd.StartsWith("ECC_PUB_KEY_"))
+            {
+                remotePublicKey = System.Convert.FromBase64String(cmd.Split("ECC_PUB_KEY_")[1]);
+            } else
+            {
+                cmd = DecryptMessage(cmd);
+                messages.Add(String.Format("Client: {0}", cmd));
+            }
+            
             foreach (var msg in messages)
             {
                 Console.WriteLine(msg);
