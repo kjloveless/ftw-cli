@@ -4,6 +4,8 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 
+namespace ftw_msgr.WebSocket;
+
 public class MsgrServer
 {
     TcpClient? socket;
