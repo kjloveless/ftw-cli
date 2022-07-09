@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using ftw_msgr.Crypto;
 
 namespace ftw_msgr.WebSocket;
@@ -110,10 +111,10 @@ public class MsgrServer
         while (socket is not null && socket.Connected)
         {         
             var cmd = reader?.ReadString();
-            Console.Clear();
+            // Console.Clear();
             if (cmd is not null && cmd.StartsWith("ECC_PUB_KEY_"))
             {
-               myCrypt.remotePublicKey = System.Convert.FromBase64String(cmd.Split("ECC_PUB_KEY_")[1]);
+               myCrypt.InitRemotePublicKey(System.Convert.FromBase64String(cmd.Split("ECC_PUB_KEY_")[1]));
             } else
             {
                 cmd = myCrypt.DecryptMessage(cmd);
