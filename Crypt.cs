@@ -72,6 +72,7 @@ public class Crypt
 
     public void InitRemotePublicKey(byte[] remotePubKey)
     {
+        // last place where there is a windows only class
         remotePublicKey = ECDiffieHellmanCngPublicKey.FromByteArray(remotePubKey, new CngKeyBlobFormat("ECCPUBLICBLOB")); 
     }
 }
