@@ -12,7 +12,7 @@ public class MsgrServer
     NetworkStream? netStream;
     BinaryReader? reader;
     BinaryWriter? writer;
-    List<String> messages; 
+    List<string> messages; 
     bool handleStarted;
     Crypt myCrypt;
 
@@ -20,9 +20,9 @@ public class MsgrServer
     {   
         // Console.Clear();
         myCrypt = new Crypt();
-        messages = new List<String>();     
+        messages = new List<string>();     
         Console.WriteLine("client or server?");
-        String? Line;
+        string? Line;
         if (arg != "") Line = arg;
         else
         {
@@ -38,21 +38,31 @@ public class MsgrServer
 
     public void SendMsg(string? msg, bool encrypt = true)
     {
-        while (!handleStarted) continue;
-        if ((writer is not null) && (msg is not null)) 
+        while (!handleStarted)
+        {
+            continue;
+        }
+
+        if (writer is null || msg is null)
+        {
+            Console.WriteLine("writer not initialized.");
+        }
+        else
         {
             if (encrypt)
             {
                 msg = myCrypt.EncryptMessage(msg);
+                if (msg is null)
+                {
+                    msg = "";
+                }
             }
+
             writer.Write(msg);
-        } else 
-        {
-            Console.WriteLine("writer not initialized.");
         }
     }
 
-    public List<String> MsgHistory => messages;
+    public List<string> MsgHistory => messages;
 
     private void SetupServer()
     {
@@ -64,12 +74,13 @@ public class MsgrServer
         SendMsg($"ECC_PUB_KEY_{myCrypt.localPublicKey_b64}", false);
     }
 
-    private void SetupClient(String ip = "")
+    private void SetupClient(string ip = "")
     {
         try
         {
             Console.WriteLine("Enter an IP address to connect to...");
-            ip = Console.ReadLine();
+            var line = Console.ReadLine();
+            ip = (line is null) ? "" : line;
             if (ip != "localhost") 
             {
                 socket = new TcpClient();
@@ -112,13 +123,17 @@ public class MsgrServer
         {         
             var cmd = reader?.ReadString();
             // Console.Clear();
-            if (cmd is not null && cmd.StartsWith("ECC_PUB_KEY_"))
+            if (cmd is not null)
             {
-               myCrypt.InitRemotePublicKey(System.Convert.FromBase64String(cmd.Split("ECC_PUB_KEY_")[1]));
-            } else
-            {
-                cmd = myCrypt.DecryptMessage(cmd);
-                messages.Add(String.Format("Client: {0}", cmd));
+                if (cmd.StartsWith("ECC_PUB_KEY_"))
+                {
+                    myCrypt.InitRemotePublicKey(System.Convert.FromBase64String(cmd.Split("ECC_PUB_KEY_")[1]));
+                }
+                else if (cmd is not null)
+                {
+                    cmd = myCrypt.DecryptMessage(cmd);
+                    messages.Add(string.Format("Client: {0}", cmd));
+                }
             }
             
             foreach (var msg in messages)
