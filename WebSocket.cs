@@ -104,6 +104,7 @@ public class MsgrServer
                         }
                     }
                     writer.Write(myStr);
+                    if (msg as string == "exit") { socket?.Close(); }
                     break;
                 default:
                     break;
