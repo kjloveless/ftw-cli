@@ -36,7 +36,7 @@ public class MsgrServer
         }
     }
 
-    public void SendMsg(string? msg, bool encrypt = true)
+    public void SendMsg<T>(T msg, bool encrypt = true)
     {
         while (!handleStarted)
         {
@@ -49,15 +49,51 @@ public class MsgrServer
         }
         else
         {
-            if (encrypt)
+            Type myType = typeof(T);
+            switch (myType)
             {
-                msg = myCrypt.EncryptMessage(msg);
-                if (msg is null)
-                {
-                    msg = "";
-                }
+                case Type when myType == typeof(byte[]):
+                    byte[]? myBytes = msg as byte[];
+                    if (myBytes is null) { myBytes = Array.Empty<byte>(); }
+                    char[]? myChars = new char[myBytes.Length*2];
+                    if (encrypt)
+                    {
+                        Convert.ToBase64CharArray(myBytes, 0, myBytes.Length, myChars, 0);
+                        myChars = myCrypt.EncryptMessage<char[]>(myChars);
+                        if (myChars is null)
+                        {
+                            myBytes = Array.Empty<byte>();
+                        } else
+                        {
+                            myBytes = Convert.FromBase64CharArray(myChars, 0, myChars.Length);
+                        }
+                    }
+                    writer.Write(myBytes);
+                    break;
+                case Type when myType == typeof(int):
+                    int myInt = 0;
+                    if (msg is not null) 
+                    {  
+                        myInt = Convert.ToInt32(msg);
+                    }
+                    writer.Write(myInt);
+                    break;
+                case Type _ when myType == typeof(string):
+                    string? myStr = msg as string;
+                    if (myStr is null) { myStr = ""; }
+                    if (encrypt)
+                    {
+                        myStr = myCrypt.EncryptMessage<string>(myStr);
+                        if (myStr is null)
+                        {
+                            myStr = "";
+                        }
+                    }
+                    writer.Write(myStr);
+                    break;
+                default:
+                    break;
             }
-            writer.Write(msg);
         }
     }
 
@@ -71,11 +107,10 @@ public class MsgrServer
         InitComs();
         Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
 
-        SendMsg("ECC_PUB_KEY", false);
-        writer.Write(myCrypt.localPublicKey_X.Length);
-        writer.Write(myCrypt.localPublicKey_X);
-        writer.Write(myCrypt.localPublicKey_Y.Length);
-        writer.Write(myCrypt.localPublicKey_Y);
+        SendMsg<string>("ECC_PUB_KEY", false);
+        SendMsg<int>(myCrypt.localPublicKey_Q.X.Length, false);
+        SendMsg<byte[]>(myCrypt.localPublicKey_Q.X, false);
+        SendMsg<byte[]>(myCrypt.localPublicKey_Q.Y, false);
     }
 
     private void SetupClient(string ip = "")
@@ -84,7 +119,7 @@ public class MsgrServer
         {
             Console.WriteLine("Enter an IP address to connect to...");
             var line = Console.ReadLine();
-            ip = (line is null) ? "" : line;
+            ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
             if (ip != "localhost") 
             {
                 socket = new TcpClient();
@@ -96,11 +131,10 @@ public class MsgrServer
             }
             InitComs();
 
-            SendMsg("ECC_PUB_KEY", false);
-            writer.Write(myCrypt.localPublicKey_X.Length);
-            writer.Write(myCrypt.localPublicKey_X);
-            writer.Write(myCrypt.localPublicKey_Y.Length);
-            writer.Write(myCrypt.localPublicKey_Y);
+            SendMsg<string>("ECC_PUB_KEY", false);
+            SendMsg<int>(myCrypt.localPublicKey_Q.X.Length, false);
+            SendMsg<byte[]>(myCrypt.localPublicKey_Q.X, false);
+            SendMsg<byte[]>(myCrypt.localPublicKey_Q.Y, false);
             Console.WriteLine("Connected to server...");
         }
         catch (SocketException e)
@@ -128,22 +162,21 @@ public class MsgrServer
     private void HandleRequest()
     {
         handleStarted = true;
-        ECParameters myECParams = new();
+        ECPoint myECPoint;
         while (socket is not null && socket.Connected)
         {         
             var cmd = reader?.ReadString();
-            // Console.Clear();
+            //Console.Clear();
             if (cmd is not null)
             {
                 if (cmd.Equals("ECC_PUB_KEY"))
                 {
                     int byteCount = reader.ReadInt32();
                     byte[]? myX = reader.ReadBytes(byteCount);
-                    byteCount = reader.ReadInt32();
                     byte[]? myY = reader.ReadBytes(byteCount);
-                    myECParams.Q.X = myX;
-                    myECParams.Q.Y = myY;
-                    myCrypt.InitRemotePublicKey(myECParams);
+                    myECPoint.X = myX;
+                    myECPoint.Y = myY;
+                    myCrypt.InitRemotePublicKey(myECPoint);
                 }
                 else if (cmd is not null)
                 {
