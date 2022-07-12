@@ -7,14 +7,18 @@ public class Crypt
 {
     ECDiffieHellman localKey;
     ECDiffieHellmanPublicKey localPublicKey;
-    public string localPublicKey_b64;
+    public byte[]? localPublicKey_X;
+    public byte[]? localPublicKey_Y;
+    public ECDiffieHellman? RemoteKey { get; set; }
     public ECDiffieHellmanPublicKey? remotePublicKey { get; set; }
 
     public Crypt()
     {
         localKey = ECDiffieHellman.Create();
         localPublicKey = localKey.PublicKey; 
-        localPublicKey_b64 = System.Convert.ToBase64String(localPublicKey.ToByteArray());
+        localPublicKey_X = localPublicKey.ExportParameters().Q.X;
+        localPublicKey_Y = localPublicKey.ExportParameters().Q.Y;
+        RemoteKey = ECDiffieHellman.Create();
     }
 
     public string DecryptMessage(string ciphertext)
@@ -65,14 +69,16 @@ public class Crypt
                     
                     return System.Convert.ToBase64String(data);
                 }
-                aes.Clear();
             }
         }
     }
 
-    public void InitRemotePublicKey(byte[] remotePubKey)
+    public void InitRemotePublicKey(ECParameters remoteParameters)
     {
-        // last place where there is a windows only class
-        remotePublicKey = ECDiffieHellmanCngPublicKey.FromByteArray(remotePubKey, new CngKeyBlobFormat("ECCPUBLICBLOB")); 
+        var ecdh = ECDiffieHellman.Create();
+        ECCurve curve = localKey.ExportParameters(false).Curve;
+        remoteParameters.Curve = curve;
+        ecdh.ImportParameters(remoteParameters);
+        remotePublicKey = ecdh.PublicKey;
     }
 }
