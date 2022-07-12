@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using ftw_msgr.Crypto;
 
@@ -20,15 +21,14 @@ public class MsgrServer
     {   
         // Console.Clear();
         myCrypt = new Crypt();
-        messages = new List<string>();     
-        Console.WriteLine("client or server?");
-        string? Line;
-        if (arg != "") Line = arg;
-        else
+        messages = new List<string>();
+        string? Line = arg;
+        while (string.IsNullOrWhiteSpace(Line)) 
         {
+            Console.Write("client or server? ");            
             Line = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(Line)) { Line = ""; }
         }
-        
         switch (Line)
         {
             case "client": SetupClient(); break;
@@ -57,7 +57,6 @@ public class MsgrServer
                     msg = "";
                 }
             }
-
             writer.Write(msg);
         }
     }
@@ -71,7 +70,12 @@ public class MsgrServer
         socket = listener.AcceptTcpClient();
         InitComs();
         Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
-        SendMsg($"ECC_PUB_KEY_{myCrypt.localPublicKey_b64}", false);
+
+        SendMsg("ECC_PUB_KEY", false);
+        writer.Write(myCrypt.localPublicKey_X.Length);
+        writer.Write(myCrypt.localPublicKey_X);
+        writer.Write(myCrypt.localPublicKey_Y.Length);
+        writer.Write(myCrypt.localPublicKey_Y);
     }
 
     private void SetupClient(string ip = "")
@@ -91,7 +95,12 @@ public class MsgrServer
                 socket = new TcpClient(ip, 50001);
             }
             InitComs();
-            SendMsg($"ECC_PUB_KEY_{myCrypt.localPublicKey_b64}", false);
+
+            SendMsg("ECC_PUB_KEY", false);
+            writer.Write(myCrypt.localPublicKey_X.Length);
+            writer.Write(myCrypt.localPublicKey_X);
+            writer.Write(myCrypt.localPublicKey_Y.Length);
+            writer.Write(myCrypt.localPublicKey_Y);
             Console.WriteLine("Connected to server...");
         }
         catch (SocketException e)
@@ -119,15 +128,22 @@ public class MsgrServer
     private void HandleRequest()
     {
         handleStarted = true;
+        ECParameters myECParams = new();
         while (socket is not null && socket.Connected)
         {         
             var cmd = reader?.ReadString();
             // Console.Clear();
             if (cmd is not null)
             {
-                if (cmd.StartsWith("ECC_PUB_KEY_"))
+                if (cmd.Equals("ECC_PUB_KEY"))
                 {
-                    myCrypt.InitRemotePublicKey(System.Convert.FromBase64String(cmd.Split("ECC_PUB_KEY_")[1]));
+                    int byteCount = reader.ReadInt32();
+                    byte[]? myX = reader.ReadBytes(byteCount);
+                    byteCount = reader.ReadInt32();
+                    byte[]? myY = reader.ReadBytes(byteCount);
+                    myECParams.Q.X = myX;
+                    myECParams.Q.Y = myY;
+                    myCrypt.InitRemotePublicKey(myECParams);
                 }
                 else if (cmd is not null)
                 {
