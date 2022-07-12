@@ -35,6 +35,20 @@ public class MsgrServer
             case "server": SetupServer(); break;
         }
     }
+    private void SendKey()
+    {
+        if (myCrypt.localPublicKey_Q.X is not null && myCrypt.localPublicKey_Q.Y is not null)
+        {
+            SendMsg<string>("ECC_PUB_KEY", false);
+            SendMsg<int>(myCrypt.localPublicKey_Q.X.Length, false);
+            SendMsg<byte[]>(myCrypt.localPublicKey_Q.X, false);
+            SendMsg<byte[]>(myCrypt.localPublicKey_Q.Y, false);
+        } 
+        else
+        {
+            Console.WriteLine("Local public key not available.");
+        }
+    }
 
     public void SendMsg<T>(T msg, bool encrypt = true)
     {
@@ -90,6 +104,7 @@ public class MsgrServer
                         }
                     }
                     writer.Write(myStr);
+                    if (msg as string == "exit") { socket?.Close(); }
                     break;
                 default:
                     break;
@@ -107,10 +122,7 @@ public class MsgrServer
         InitComs();
         Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
 
-        SendMsg<string>("ECC_PUB_KEY", false);
-        SendMsg<int>(myCrypt.localPublicKey_Q.X.Length, false);
-        SendMsg<byte[]>(myCrypt.localPublicKey_Q.X, false);
-        SendMsg<byte[]>(myCrypt.localPublicKey_Q.Y, false);
+        SendKey();
     }
 
     private void SetupClient(string ip = "")
@@ -131,10 +143,7 @@ public class MsgrServer
             }
             InitComs();
 
-            SendMsg<string>("ECC_PUB_KEY", false);
-            SendMsg<int>(myCrypt.localPublicKey_Q.X.Length, false);
-            SendMsg<byte[]>(myCrypt.localPublicKey_Q.X, false);
-            SendMsg<byte[]>(myCrypt.localPublicKey_Q.Y, false);
+            SendKey();
             Console.WriteLine("Connected to server...");
         }
         catch (SocketException e)
@@ -163,9 +172,9 @@ public class MsgrServer
     {
         handleStarted = true;
         ECPoint myECPoint;
-        while (socket is not null && socket.Connected)
+        while (socket is not null && socket.Connected && reader is not null) 
         {         
-            var cmd = reader?.ReadString();
+            var cmd = reader.ReadString();
             //Console.Clear();
             if (cmd is not null)
             {
