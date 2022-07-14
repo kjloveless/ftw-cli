@@ -23,7 +23,7 @@ public class MsgrServer
         myCrypt = new Crypt();
         messages = new List<string>();
         string? Line = arg;
-        while (string.IsNullOrWhiteSpace(Line)) 
+        while (Line != "client" && Line != "server")  
         {
             Console.Write("client or server? ");            
             Line = Console.ReadLine();
