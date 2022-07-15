@@ -156,6 +156,7 @@ public class MsgrServer
                     socket = new TcpClient(ip, 1702);
                 } catch(SocketException e)
                 {
+                    Console.WriteLine(e.Message);
                     socket = new TcpClient(ip, 50001);
                 }    
             }
