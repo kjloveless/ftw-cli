@@ -8,4 +8,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Open.Nat.Core" Version="2.1.0.5" />
+  </ItemGroup>
+
 </Project>
