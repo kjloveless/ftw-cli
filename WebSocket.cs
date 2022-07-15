@@ -151,7 +151,13 @@ public class MsgrServer
             ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
             if (ip != "localhost") 
             {
-                socket = new TcpClient(ip, 1702);    
+                try
+                {
+                    socket = new TcpClient(ip, 1702);
+                } catch(SocketException e)
+                {
+                    socket = new TcpClient(ip, 50001);
+                }    
             }
             else
             {
