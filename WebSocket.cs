@@ -17,6 +17,7 @@ public class MsgrServer
     List<string> messages; 
     bool handleStarted;
     Crypt myCrypt;
+    string? userName;
 
     public MsgrServer(string arg = "")
     {   
@@ -24,7 +25,7 @@ public class MsgrServer
         myCrypt = new Crypt();
         messages = new List<string>();
         string? Line = arg;
-        while (Line != "client" && Line != "server")  
+        while (Line != "client" && Line != "server" && Line != "disco")  
         {
             Console.Write("client or server? ");            
             Line = Console.ReadLine();
@@ -34,6 +35,7 @@ public class MsgrServer
         {
             case "client": SetupClient(); break;
             case "server": SetupServer(); break;
+            case "disco": SetupDisco(); break;
         }
     }
     private void SendKey()
@@ -48,6 +50,25 @@ public class MsgrServer
         else
         {
             Console.WriteLine("Local public key not available.");
+        }
+    }
+
+    static async Task<string> GetPublicIp(string serviceUrl = "https://ipinfo.io/ip")
+    {
+        return await new HttpClient().GetStringAsync(serviceUrl);
+    }
+
+    private async void SendUserInfo()
+    {
+        if (myCrypt.remotePublicKey is not null)
+        {
+            SendMsg<string>("USER_INFO");
+            SendMsg<string>($"{userName}");
+            SendMsg<string>($"{await GetPublicIp()}");
+        } 
+        else
+        {
+            Console.WriteLine("Remote public key not available.");
         }
     }
 
@@ -144,36 +165,111 @@ public class MsgrServer
 
     private void SetupClient(string ip = "")
     {
-        try
+        Console.WriteLine("Select connection mode: [r]aw or [d]iscovery");
+        string? Line = Console.ReadLine();
+        while (Line != "r" && Line != "d")  
         {
-            Console.WriteLine("Enter an IP address to connect to...");
-            var line = Console.ReadLine();
-            ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
-            if (ip != "localhost") 
-            {
+            Console.Write("r or d? ");            
+            Line = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(Line)) { Line = ""; }
+        }
+        switch (Line)
+        {
+            case "r": 
                 try
                 {
-                    socket = new TcpClient(ip, 1702);
-                } catch(SocketException e)
+                    Console.WriteLine("Enter an IP address to connect to...");
+                    var line = Console.ReadLine();
+                    ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
+                    if (ip != "localhost") 
+                    {
+                        try
+                        {
+                            socket = new TcpClient(ip, 1702);
+                        } catch(SocketException e)
+                        {
+                            Console.WriteLine(e.Message);
+                            socket = new TcpClient(ip, 50001);
+                        }    
+                    }
+                    else
+                    {
+                        socket = new TcpClient(ip, 50001);
+                    }
+                    InitComs();
+
+                    SendKey();
+                    Console.WriteLine("Connected to server...");
+                }
+                catch (SocketException e)
                 {
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.ToString());
+                } 
+                break;
+            case "d": 
+                try
+                {
+                    // Console.WriteLine("Enter an IP address to connect to...");
+                    // var line = Console.ReadLine();
+                    // ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
+                    // if (ip != "localhost") 
+                    // {
+                    //     try
+                    //     {
+                    //         socket = new TcpClient(ip, 1702);
+                    //     } catch(SocketException e)
+                    //     {
+                    //         Console.WriteLine(e.Message);
+                    //         socket = new TcpClient(ip, 50001);
+                    //     }    
+                    // }
+                    // else
+                    // {
                     socket = new TcpClient(ip, 50001);
-                }    
-            }
-            else
-            {
-                socket = new TcpClient(ip, 50001);
-            }
-            InitComs();
+                    // }
+                    InitComs();
 
-            SendKey();
-            Console.WriteLine("Connected to server...");
+                    SendKey();
+                    Console.WriteLine("Connected to server...");
+                    
+                }
+                catch (SocketException e)
+                {
+                    Console.WriteLine(e.ToString());
+                } 
+                break;
         }
-        catch (SocketException e)
+
+        
+
+    }
+
+    private async void SetupDisco()
+    {
+        var UserDictionary = new Dictionary<string, string>();
+        var discoverer = new NatDiscoverer();
+        try
         {
-            Console.WriteLine(e.ToString());
+            // using SSDP protocol, it discovers NAT device.
+            var device = await discoverer.DiscoverDeviceAsync();
+
+            // display the NAT's IP address
+            Console.WriteLine("The external IP Address is: {0} ", await device.GetExternalIPAsync());
+
+            // create a new mapping in the router [external_ip:1702 -> host_machine:1602]
+            await device.CreatePortMapAsync(new Mapping(Protocol.Tcp, 50001, 1703, "For testing"));
+        } catch (NatDeviceNotFoundException e)
+        {
+            Console.WriteLine(e.Message);
         }
 
+        var listener = new TcpListener(IPAddress.Any, 50001);
+        listener.Start();
+        socket = listener.AcceptTcpClient();
+        InitComs();
+        Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
+
+        SendKey();
     }
 
     private void InitComs()
@@ -209,6 +305,7 @@ public class MsgrServer
                     myECPoint.X = myX;
                     myECPoint.Y = myY;
                     myCrypt.InitRemotePublicKey(myECPoint);
+                    SendUserInfo();
                 }
                 else if (cmd is not null)
                 {
