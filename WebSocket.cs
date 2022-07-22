@@ -46,6 +46,11 @@ public class MsgrServer
             SendMsg<int>(myCrypt.localPublicKey_Q.X.Length, false);
             SendMsg<byte[]>(myCrypt.localPublicKey_Q.X, false);
             SendMsg<byte[]>(myCrypt.localPublicKey_Q.Y, false);
+
+            while (myCrypt.remotePublicKey is null)
+            {
+                Thread.Sleep(1000);
+            }
         } 
         else
         {
@@ -159,8 +164,6 @@ public class MsgrServer
         socket = listener.AcceptTcpClient();
         InitComs();
         Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
-
-        SendKey();
     }
 
     private void SetupClient(string ip = "")
@@ -197,8 +200,6 @@ public class MsgrServer
                         socket = new TcpClient(ip, 50001);
                     }
                     InitComs();
-
-                    SendKey();
                     Console.WriteLine("Connected to server...");
                 }
                 catch (SocketException e)
@@ -225,12 +226,15 @@ public class MsgrServer
                     // }
                     // else
                     // {
+                    Console.WriteLine("Enter your username:");
+                    userName = Console.ReadLine();
                     socket = new TcpClient(ip, 50001);
                     // }
                     InitComs();
 
-                    SendKey();
+                    
                     Console.WriteLine("Connected to server...");
+                    SendUserInfo();
                     
                 }
                 catch (SocketException e)
@@ -248,6 +252,7 @@ public class MsgrServer
     {
         var UserDictionary = new Dictionary<string, string>();
         var discoverer = new NatDiscoverer();
+        userName = "disco1";
         try
         {
             // using SSDP protocol, it discovers NAT device.
@@ -268,8 +273,6 @@ public class MsgrServer
         socket = listener.AcceptTcpClient();
         InitComs();
         Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
-
-        SendKey();
     }
 
     private void InitComs()
@@ -280,7 +283,9 @@ public class MsgrServer
             reader = new BinaryReader(netStream);
             writer = new BinaryWriter(netStream);
 
+
             Task.Run(() => HandleRequest()); 
+            SendKey();
         } else
         {
             Console.WriteLine("Socket not initialized.");
@@ -305,7 +310,6 @@ public class MsgrServer
                     myECPoint.X = myX;
                     myECPoint.Y = myY;
                     myCrypt.InitRemotePublicKey(myECPoint);
-                    SendUserInfo();
                 }
                 else if (cmd is not null)
                 {
