@@ -268,10 +268,7 @@ public class MsgrServer
 
 
             Task.Run(() => HandleRequest()); 
-            if (handleStarted)
-            {
-                SendKey();
-            }
+            SendKey();
         } else
         {
             Console.WriteLine("Socket not initialized.");
@@ -300,7 +297,16 @@ public class MsgrServer
                 else if (cmd is not null)
                 {
                     cmd = myCrypt.DecryptMessage(cmd);
-                    messages.Add(string.Format("Client: {0}", cmd));
+                    if (cmd.Equals("USER_INFO"))
+                    {
+                        var user = myCrypt.DecryptMessage(reader.ReadString());
+                        var userAddress = myCrypt.DecryptMessage(reader.ReadString());
+                        Console.WriteLine($"user: {user}, address: {userAddress}");
+                        // add to dictionary
+                    } 
+                    else {
+                        messages.Add(string.Format("Client: {0}", cmd));
+                    }
                 }
             }
             
