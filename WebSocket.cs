@@ -153,6 +153,16 @@ public class MsgrServer
             // display the NAT's IP address
             Console.WriteLine("The external IP Address is: {0} ", await device.GetExternalIPAsync());
 
+            foreach (var mapping in await device.GetAllMappingsAsync())
+            {
+                // in this example we want to delete the "Skype" mappings
+                if(mapping.Description.Contains("Skype"))
+                {
+                    Console.WriteLine("Deleting {0}", mapping);
+                    await device.DeletePortMapAsync(mapping);
+                }
+            }
+
             // create a new mapping in the router [external_ip:1702 -> host_machine:1602]
             await device.CreatePortMapAsync(new Mapping(Protocol.Tcp, 50001, 1702, "For testing"));
         } catch (NatDeviceNotFoundException e)
@@ -244,8 +254,18 @@ public class MsgrServer
             // display the NAT's IP address
             Console.WriteLine("The external IP Address is: {0} ", await device.GetExternalIPAsync());
 
+            foreach (var mapping in await device.GetAllMappingsAsync())
+            {
+                // in this example we want to delete the "Skype" mappings
+                if(mapping.Description.Contains("For testing"))
+                {
+                    Console.WriteLine("Deleting {0}", mapping);
+                    await device.DeletePortMapAsync(mapping);
+                }
+            }
+
             // create a new mapping in the router [external_ip:1702 -> host_machine:1602]
-            await device.CreatePortMapAsync(new Mapping(Protocol.Tcp, 50001, 1703, "For testing"));
+            await device.CreatePortMapAsync(new Mapping(Protocol.Tcp, 50001, 1702, "For testing"));
         } catch (NatDeviceNotFoundException e)
         {
             Console.WriteLine(e.Message);
