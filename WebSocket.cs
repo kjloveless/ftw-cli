@@ -210,26 +210,9 @@ public class MsgrServer
             case "d": 
                 try
                 {
-                    // Console.WriteLine("Enter an IP address to connect to...");
-                    // var line = Console.ReadLine();
-                    // ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
-                    // if (ip != "localhost") 
-                    // {
-                    //     try
-                    //     {
-                    //         socket = new TcpClient(ip, 1702);
-                    //     } catch(SocketException e)
-                    //     {
-                    //         Console.WriteLine(e.Message);
-                    //         socket = new TcpClient(ip, 50001);
-                    //     }    
-                    // }
-                    // else
-                    // {
                     Console.WriteLine("Enter your username:");
                     userName = Console.ReadLine();
                     socket = new TcpClient(ip, 50001);
-                    // }
                     InitComs();
 
                     
@@ -285,7 +268,10 @@ public class MsgrServer
 
 
             Task.Run(() => HandleRequest()); 
-            SendKey();
+            if (handleStarted)
+            {
+                SendKey();
+            }
         } else
         {
             Console.WriteLine("Socket not initialized.");
