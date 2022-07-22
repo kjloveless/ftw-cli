@@ -8,7 +8,7 @@ $$$$/     $$$$$$/   $$ | __ $$$$$$/ $$ | $$ | $$ |
 $$ |                $$ |/  |        $$ \_$$ \_$$ |
 $$ |                $$  $$/         $$   $$   $$/ 
 $$/                  $$$$/           $$$$$/$$$$/  
-```                                                                                                    
+```                                                                                        
 http://patorjk.com/software/taag/#p=display&h=0&f=Big%20Money-sw&t=f-t-w                                                  
 
 f-t-w is a peer to peer encrypted cli messenger over TCP.
