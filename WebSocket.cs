@@ -26,7 +26,7 @@ public class MsgrServer
         myCrypt = new Crypt();
         messages = new List<string>();
         string? Line = arg;
-        while (Line != "client" && Line != "server" && Line != "disco")  
+        while (Line != "client" && Line != "server")  
         {
             Console.Write("client or server? ");            
             Line = Console.ReadLine();
@@ -36,7 +36,6 @@ public class MsgrServer
         {
             case "client": SetupClient(); break;
             case "server": SetupServer(); break;
-            case "disco": SetupDisco(); break;
         }
     }
     private void SendKey()
@@ -240,42 +239,6 @@ public class MsgrServer
 
         
 
-    }
-
-    private async void SetupDisco()
-    {
-        var discoverer = new NatDiscoverer();
-        userName = "disco1";
-        try
-        {
-            // using SSDP protocol, it discovers NAT device.
-            var device = await discoverer.DiscoverDeviceAsync();
-
-            // display the NAT's IP address
-            Console.WriteLine("The external IP Address is: {0} ", await device.GetExternalIPAsync());
-
-            foreach (var mapping in await device.GetAllMappingsAsync())
-            {
-                // in this example we want to delete the "Skype" mappings
-                if(mapping.Description.Contains("For testing"))
-                {
-                    Console.WriteLine("Deleting {0}", mapping);
-                    await device.DeletePortMapAsync(mapping);
-                }
-            }
-
-            // create a new mapping in the router [external_ip:1702 -> host_machine:1602]
-            await device.CreatePortMapAsync(new Mapping(Protocol.Tcp, 50001, 1702, "For testing"));
-        } catch (NatDeviceNotFoundException e)
-        {
-            Console.WriteLine(e.Message);
-        }
-
-        var listener = new TcpListener(IPAddress.Any, 50001);
-        listener.Start();
-        socket = listener.AcceptTcpClient();
-        InitComs();
-        Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
     }
 
     private void InitComs()
