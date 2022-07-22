@@ -18,6 +18,7 @@ public class MsgrServer
     bool handleStarted;
     Crypt myCrypt;
     string? userName;
+    Dictionary<string, string> UserDictionary = new Dictionary<string, string>();
 
     public MsgrServer(string arg = "")
     {   
@@ -233,7 +234,6 @@ public class MsgrServer
 
     private async void SetupDisco()
     {
-        var UserDictionary = new Dictionary<string, string>();
         var discoverer = new NatDiscoverer();
         userName = "disco1";
         try
@@ -301,8 +301,10 @@ public class MsgrServer
                     {
                         var user = myCrypt.DecryptMessage(reader.ReadString());
                         var userAddress = myCrypt.DecryptMessage(reader.ReadString());
-                        Console.WriteLine($"user: {user}, address: {userAddress}");
+                        // Console.WriteLine($"user: {user}, address: {userAddress}");
                         // add to dictionary
+                        UserDictionary.Add(user, userAddress);
+                        Console.WriteLine($"user: {user}, address: {UserDictionary[user]}");
                     } 
                     else {
                         messages.Add(string.Format("Client: {0}", cmd));
