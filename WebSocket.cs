@@ -17,6 +17,8 @@ public class MsgrServer
     List<string> messages; 
     bool handleStarted;
     Crypt myCrypt;
+    string? userName;
+    Dictionary<string, string> UserDictionary = new Dictionary<string, string>();
 
     public MsgrServer(string arg = "")
     {   
@@ -44,10 +46,34 @@ public class MsgrServer
             SendMsg<int>(myCrypt.localPublicKey_Q.X.Length, false);
             SendMsg<byte[]>(myCrypt.localPublicKey_Q.X, false);
             SendMsg<byte[]>(myCrypt.localPublicKey_Q.Y, false);
+
+            while (myCrypt.remotePublicKey is null)
+            {
+                Thread.Sleep(1000);
+            }
         } 
         else
         {
             Console.WriteLine("Local public key not available.");
+        }
+    }
+
+    static async Task<string> GetPublicIp(string serviceUrl = "https://ipinfo.io/ip")
+    {
+        return await new HttpClient().GetStringAsync(serviceUrl);
+    }
+
+    private async void SendUserInfo()
+    {
+        if (myCrypt.remotePublicKey is not null)
+        {
+            SendMsg<string>("USER_INFO");
+            SendMsg<string>($"{userName}");
+            SendMsg<string>($"{await GetPublicIp()}");
+        } 
+        else
+        {
+            Console.WriteLine("Remote public key not available.");
         }
     }
 
@@ -126,6 +152,16 @@ public class MsgrServer
             // display the NAT's IP address
             Console.WriteLine("The external IP Address is: {0} ", await device.GetExternalIPAsync());
 
+            foreach (var mapping in await device.GetAllMappingsAsync())
+            {
+                // in this example we want to delete the "Skype" mappings
+                if(mapping.Description.Contains("Skype"))
+                {
+                    Console.WriteLine("Deleting {0}", mapping);
+                    await device.DeletePortMapAsync(mapping);
+                }
+            }
+
             // create a new mapping in the router [external_ip:1702 -> host_machine:1602]
             await device.CreatePortMapAsync(new Mapping(Protocol.Tcp, 50001, 1702, "For testing"));
         } catch (NatDeviceNotFoundException e)
@@ -138,41 +174,70 @@ public class MsgrServer
         socket = listener.AcceptTcpClient();
         InitComs();
         Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
-
-        SendKey();
     }
 
     private void SetupClient(string ip = "")
     {
-        try
+        Console.WriteLine("Select connection mode: [r]aw or [d]iscovery");
+        string? Line = Console.ReadLine();
+        while (Line != "r" && Line != "d")  
         {
-            Console.WriteLine("Enter an IP address to connect to...");
-            var line = Console.ReadLine();
-            ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
-            if (ip != "localhost") 
-            {
+            Console.Write("r or d? ");            
+            Line = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(Line)) { Line = ""; }
+        }
+        switch (Line)
+        {
+            case "r": 
                 try
                 {
-                    socket = new TcpClient(ip, 1702);
-                } catch(SocketException e)
+                    Console.WriteLine("Enter an IP address to connect to...");
+                    var line = Console.ReadLine();
+                    ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
+                    if (ip != "localhost") 
+                    {
+                        try
+                        {
+                            socket = new TcpClient(ip, 1702);
+                        } catch(SocketException e)
+                        {
+                            Console.WriteLine(e.Message);
+                            socket = new TcpClient(ip, 50001);
+                        }    
+                    }
+                    else
+                    {
+                        socket = new TcpClient(ip, 50001);
+                    }
+                    InitComs();
+                    Console.WriteLine("Connected to server...");
+                }
+                catch (SocketException e)
                 {
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.ToString());
+                } 
+                break;
+            case "d": 
+                try
+                {
+                    Console.WriteLine("Enter your username:");
+                    userName = Console.ReadLine();
                     socket = new TcpClient(ip, 50001);
-                }    
-            }
-            else
-            {
-                socket = new TcpClient(ip, 50001);
-            }
-            InitComs();
+                    InitComs();
 
-            SendKey();
-            Console.WriteLine("Connected to server...");
+                    
+                    Console.WriteLine("Connected to server...");
+                    SendUserInfo();
+                    
+                }
+                catch (SocketException e)
+                {
+                    Console.WriteLine(e.ToString());
+                } 
+                break;
         }
-        catch (SocketException e)
-        {
-            Console.WriteLine(e.ToString());
-        }
+
+        
 
     }
 
@@ -184,7 +249,9 @@ public class MsgrServer
             reader = new BinaryReader(netStream);
             writer = new BinaryWriter(netStream);
 
+
             Task.Run(() => HandleRequest()); 
+            SendKey();
         } else
         {
             Console.WriteLine("Socket not initialized.");
@@ -213,7 +280,18 @@ public class MsgrServer
                 else if (cmd is not null)
                 {
                     cmd = myCrypt.DecryptMessage(cmd);
-                    messages.Add(string.Format("Client: {0}", cmd));
+                    if (cmd.Equals("USER_INFO"))
+                    {
+                        var user = myCrypt.DecryptMessage(reader.ReadString());
+                        var userAddress = myCrypt.DecryptMessage(reader.ReadString());
+                        // Console.WriteLine($"user: {user}, address: {userAddress}");
+                        // add to dictionary
+                        UserDictionary.Add(user, userAddress);
+                        Console.WriteLine($"user: {user}, address: {UserDictionary[user]}");
+                    } 
+                    else {
+                        messages.Add(string.Format("Client: {0}", cmd));
+                    }
                 }
             }
             
