@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using ftw_msgr.Crypto;
+using Open.Nat;
 
 namespace ftw_msgr.WebSocket;
 
@@ -114,8 +115,24 @@ public class MsgrServer
 
     public List<string> MsgHistory => messages;
 
-    private void SetupServer()
+    private async void SetupServer()
     {
+        var discoverer = new NatDiscoverer();
+        try
+        {
+            // using SSDP protocol, it discovers NAT device.
+            var device = await discoverer.DiscoverDeviceAsync();
+
+            // display the NAT's IP address
+            Console.WriteLine("The external IP Address is: {0} ", await device.GetExternalIPAsync());
+
+            // create a new mapping in the router [external_ip:1702 -> host_machine:1602]
+            await device.CreatePortMapAsync(new Mapping(Protocol.Tcp, 50001, 1702, "For testing"));
+        } catch (NatDeviceNotFoundException e)
+        {
+            Console.WriteLine(e.Message);
+        }
+
         var listener = new TcpListener(IPAddress.Any, 50001);
         listener.Start();
         socket = listener.AcceptTcpClient();
@@ -134,8 +151,14 @@ public class MsgrServer
             ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
             if (ip != "localhost") 
             {
-                socket = new TcpClient();
-                socket.Connect(IPAddress.Parse(ip), 50001);    
+                try
+                {
+                    socket = new TcpClient(ip, 1702);
+                } catch(SocketException e)
+                {
+                    Console.WriteLine(e.Message);
+                    socket = new TcpClient(ip, 50001);
+                }    
             }
             else
             {
