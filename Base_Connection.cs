@@ -138,7 +138,7 @@ public class Base_Connection
         }
       }
 
-      foreach (var msg in messages)
+      foreach (string msg in messages)
       {
         Console.WriteLine(msg);
       }

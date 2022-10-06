@@ -14,11 +14,11 @@ public class Server : Base_Connection
 
   private async void SetupServer()
   {
-    var discoverer = new NatDiscoverer();
+    NatDiscoverer discoverer = new NatDiscoverer();
     try
     {
       // using SSDP protocol, it discovers NAT device.
-      var device = await discoverer.DiscoverDeviceAsync();
+      NatDevice device = await discoverer.DiscoverDeviceAsync();
 
       // display the NAT's IP address
       Console.WriteLine("The external IP Address is: {0} ", await device.GetExternalIPAsync());
@@ -31,7 +31,7 @@ public class Server : Base_Connection
       Console.WriteLine(e.Message);
     }
 
-    var listener = new TcpListener(IPAddress.Any, 50001);
+    TcpListener listener = new TcpListener(IPAddress.Any, 50001);
     listener.Start();
     socket = listener.AcceptTcpClient();
     InitComs();

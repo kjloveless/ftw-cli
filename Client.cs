@@ -16,7 +16,7 @@ public class Client : Base_Connection
     try
     {
       Console.WriteLine("Enter an IP address to connect to...");
-      var line = Console.ReadLine();
+      string? line = Console.ReadLine();
       ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
       if (ip != "localhost")
       {

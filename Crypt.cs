@@ -22,21 +22,21 @@ public class Crypt
     byte[] data = System.Convert.FromBase64String(ciphertext);
     byte[] rawData;
 
-    using var aes = AesCng.Create();
+    using Aes aes = AesCng.Create();
 
-    var ivLength = aes.BlockSize >> 3;
+    int ivLength = aes.BlockSize >> 3;
     byte[] ivData = new byte[ivLength];
     Array.Copy(data, ivData, ivLength);
 
     if (remotePublicKey is not null)
     {
-      var sumKey = localKey.DeriveKeyMaterial(remotePublicKey);
+      byte[] sumKey = localKey.DeriveKeyMaterial(remotePublicKey);
       aes.Key = sumKey;
       aes.IV = ivData;
       using ICryptoTransform decryptor = aes.CreateDecryptor();
       using MemoryStream ms = new MemoryStream();
 
-      var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Write);
+      CryptoStream cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Write);
       cs.Write(data, ivLength, data.Length - ivLength);
       cs.Close();
       rawData = ms.ToArray();
@@ -52,9 +52,9 @@ public class Crypt
   {
     if (remotePublicKey is not null)
     {
-      var sumKey = localKey.DeriveKeyMaterial(remotePublicKey);
+      byte[] sumKey = localKey.DeriveKeyMaterial(remotePublicKey);
 
-      using var aes = AesCng.Create();
+      using Aes aes = AesCng.Create();
 
       aes.Key = sumKey;
       aes.GenerateIV();
@@ -62,7 +62,7 @@ public class Crypt
 
       using MemoryStream ms = new MemoryStream();
 
-      var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
+      CryptoStream cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
 
       if (typeof(T) == typeof(string))
       {
@@ -73,7 +73,7 @@ public class Crypt
         ms.Write(aes.IV, 0, aes.IV.Length);
         cs.Write(rawData, 0, rawData.Length);
         cs.Close();
-        var data = ms.ToArray();
+        byte[] data = ms.ToArray();
         return (T?)Convert.ChangeType(Convert.ToBase64String(data), typeof(T));
       }
       else if (typeof(T) == typeof(byte[]))
@@ -103,7 +103,7 @@ public class Crypt
 
   public void InitRemotePublicKey(ECPoint myQ)
   {
-    var ecdh = ECDiffieHellman.Create();
+    ECDiffieHellman ecdh = ECDiffieHellman.Create();
     ECParameters myECParams = new() { Q = myQ };
     ECCurve curve = localKey.ExportParameters(false).Curve;
     myECParams.Curve = curve;
