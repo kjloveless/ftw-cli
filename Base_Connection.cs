@@ -54,14 +54,10 @@ public class Base_Connection
           {
             Convert.ToBase64CharArray(myBytes, 0, myBytes.Length, myChars, 0);
             myChars = myCrypt.EncryptMessage<char[]>(myChars);
-            if (myChars is null)
-            {
-              myBytes = Array.Empty<byte>();
-            }
-            else
-            {
-              myBytes = Convert.FromBase64CharArray(myChars, 0, myChars.Length);
-            }
+            myBytes = myChars is null ?
+              Array.Empty<byte>()
+              : Convert.FromBase64CharArray(myChars, 0, myChars.Length);
+
           }
           writer.Write(myBytes);
           break;
