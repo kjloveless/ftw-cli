@@ -10,17 +10,11 @@ public class Base_Connection
   protected NetworkStream? netStream;
   protected BinaryReader? reader;
   protected BinaryWriter? writer;
-  protected List<string> messages;
+  protected List<string> messages = new List<string>();
   protected bool handleStarted;
-  protected Crypt myCrypt;
+  protected Crypt myCrypt = new Crypt();
   public List<string> MsgHistory => messages;
 
-  protected void InitBaseConnection()
-  {
-    // Console.Clear();
-    myCrypt = new Crypt();
-    messages = new List<string>();
-  }
   protected void SendKey()
   {
     if (myCrypt.localPublicKey_Q.X is not null && myCrypt.localPublicKey_Q.Y is not null)
@@ -122,7 +116,6 @@ public class Base_Connection
     while (socket is not null && socket.Connected && reader is not null)
     {
       var cmd = reader.ReadString();
-      //Console.Clear();
       if (cmd is not null)
       {
         switch (cmd)
@@ -130,20 +123,18 @@ public class Base_Connection
           case "exit":
             socket.Close();
             break;
-        }
-        if (cmd.Equals("ECC_PUB_KEY"))
-        {
-          int byteCount = reader.ReadInt32();
-          byte[]? myX = reader.ReadBytes(byteCount);
-          byte[]? myY = reader.ReadBytes(byteCount);
-          myECPoint.X = myX;
-          myECPoint.Y = myY;
-          myCrypt.InitRemotePublicKey(myECPoint);
-        }
-        else if (cmd is not null)
-        {
-          cmd = myCrypt.DecryptMessage(cmd);
-          messages.Add(string.Format("Client: {0}", cmd));
+          case "ECC_PUB_KEY":
+            int byteCount = reader.ReadInt32();
+            byte[]? myX = reader.ReadBytes(byteCount);
+            byte[]? myY = reader.ReadBytes(byteCount);
+            myECPoint.X = myX;
+            myECPoint.Y = myY;
+            myCrypt.InitRemotePublicKey(myECPoint);
+            break;
+          default:
+            cmd = myCrypt.DecryptMessage(cmd);
+            messages.Add(string.Format("Client: {0}", cmd));
+            break;
         }
       }
 

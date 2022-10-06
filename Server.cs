@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Sockets;
-using ftw_msgr.Crypto;
 using Open.Nat;
 using ftw_msgr.Connection;
 
@@ -10,7 +9,6 @@ public class Server : Base_Connection
 {
   public Server(string arg = "")
   {
-    InitBaseConnection();
     SetupServer();
   }
 

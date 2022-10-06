@@ -1,5 +1,4 @@
 using System.Net.Sockets;
-using ftw_msgr.Crypto;
 using ftw_msgr.Connection;
 
 namespace ftw_msgr.WebSocket;
@@ -8,7 +7,6 @@ public class Client : Base_Connection
 {
   public Client(string arg = "")
   {
-    InitBaseConnection();
     SetupClient();
 
   }
