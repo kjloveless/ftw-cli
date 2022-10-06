@@ -1,16 +1,30 @@
 ﻿using ftw_msgr.WebSocket;
+using ftw_msgr.Connection;
 
-MsgrServer msgrServer;
-if (args is not null && args.Count() > 0 && args[0] is not null) 
-{ 
-    msgrServer = new MsgrServer(args[0]);
+Base_Connection? msgrServer = null;
+
+string? arg;
+do  
+{
+    Console.Write("client or server? ");            
+    arg = Console.ReadLine();
+    if (string.IsNullOrWhiteSpace(arg)) { arg = ""; }
+} while (arg != "client" && arg != "server");
+
+switch (arg)
+{
+    case "server": 
+      msgrServer = new Server(); 
+      break;
+    case "client": 
+      msgrServer = new Client(); 
+      break;
 }
-else {
-    msgrServer = new MsgrServer();
-}
+
+
 string? text;
 
-while (true) 
+while (true && msgrServer is not null) 
 {
     Console.Write("Send: ");
     text = Console.ReadLine();

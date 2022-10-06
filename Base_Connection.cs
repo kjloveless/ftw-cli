@@ -1,42 +1,26 @@
-﻿using System;
-using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
-using System.Text;
 using ftw_msgr.Crypto;
-using Open.Nat;
 
-namespace ftw_msgr.WebSocket;
 
-public class MsgrServer
-{
-    TcpClient? socket;
-    NetworkStream? netStream;
-    BinaryReader? reader;
-    BinaryWriter? writer;
-    List<string> messages; 
-    bool handleStarted;
-    Crypt myCrypt;
+namespace ftw_msgr.Connection;
+public class Base_Connection {
+    protected TcpClient? socket;
+    protected NetworkStream? netStream;
+    protected BinaryReader? reader;
+    protected BinaryWriter? writer;
+    protected List<string> messages; 
+    protected bool handleStarted;
+    protected Crypt myCrypt;
+    public List<string> MsgHistory => messages;
 
-    public MsgrServer(string arg = "")
+    protected void InitBaseConnection()
     {   
         // Console.Clear();
         myCrypt = new Crypt();
         messages = new List<string>();
-        string? Line = arg;
-        while (Line != "client" && Line != "server")  
-        {
-            Console.Write("client or server? ");            
-            Line = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(Line)) { Line = ""; }
-        }
-        switch (Line)
-        {
-            case "client": SetupClient(); break;
-            case "server": SetupServer(); break;
-        }
     }
-    private void SendKey()
+    protected void SendKey()
     {
         if (myCrypt.localPublicKey_Q.X is not null && myCrypt.localPublicKey_Q.Y is not null)
         {
@@ -113,70 +97,7 @@ public class MsgrServer
         }
     }
 
-    public List<string> MsgHistory => messages;
-
-    private async void SetupServer()
-    {
-        var discoverer = new NatDiscoverer();
-        try
-        {
-            // using SSDP protocol, it discovers NAT device.
-            var device = await discoverer.DiscoverDeviceAsync();
-
-            // display the NAT's IP address
-            Console.WriteLine("The external IP Address is: {0} ", await device.GetExternalIPAsync());
-
-            // create a new mapping in the router [external_ip:1702 -> host_machine:1602]
-            await device.CreatePortMapAsync(new Mapping(Protocol.Tcp, 50001, 1702, "For testing"));
-        } catch (NatDeviceNotFoundException e)
-        {
-            Console.WriteLine(e.Message);
-        }
-
-        var listener = new TcpListener(IPAddress.Any, 50001);
-        listener.Start();
-        socket = listener.AcceptTcpClient();
-        InitComs();
-        Console.WriteLine($"Connected to client from {socket.Client.RemoteEndPoint?.ToString()}...");
-
-        SendKey();
-    }
-
-    private void SetupClient(string ip = "")
-    {
-        try
-        {
-            Console.WriteLine("Enter an IP address to connect to...");
-            var line = Console.ReadLine();
-            ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
-            if (ip != "localhost") 
-            {
-                try
-                {
-                    socket = new TcpClient(ip, 1702);
-                } catch(SocketException e)
-                {
-                    Console.WriteLine(e.Message);
-                    socket = new TcpClient(ip, 50001);
-                }    
-            }
-            else
-            {
-                socket = new TcpClient(ip, 50001);
-            }
-            InitComs();
-
-            SendKey();
-            Console.WriteLine("Connected to server...");
-        }
-        catch (SocketException e)
-        {
-            Console.WriteLine(e.ToString());
-        }
-
-    }
-
-    private void InitComs()
+    protected void InitComs()
     {
         if (socket is not null)
         {
@@ -191,7 +112,7 @@ public class MsgrServer
         }
     }
 
-    private void HandleRequest()
+    protected void HandleRequest()
     {
         handleStarted = true;
         ECPoint myECPoint;
