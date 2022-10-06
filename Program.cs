@@ -3,15 +3,15 @@ using ftw_msgr.Connection;
 
 Base_Connection? msgrServer = null;
 
-string? arg;
+string? text;
 do
 {
   Console.Write("client or server? ");
-  arg = Console.ReadLine();
-  if (string.IsNullOrWhiteSpace(arg)) { arg = ""; }
-} while (arg != "client" && arg != "server");
+  text = Console.ReadLine();
+  if (string.IsNullOrWhiteSpace(text)) { text = ""; }
+} while (text != "client" && text != "server");
 
-switch (arg)
+switch (text)
 {
   case "server":
     msgrServer = new Server();
@@ -21,10 +21,8 @@ switch (arg)
     break;
 }
 
-
-string? text;
-
-while (true && msgrServer is not null)
+text = "";
+while (msgrServer is not null)
 {
   Console.Write("Send: ");
   text = Console.ReadLine();
