@@ -134,6 +134,7 @@ public class Base_Connection
         }
       }
 
+      Console.Clear();
       foreach (string msg in messages)
       {
         Console.WriteLine(msg);
