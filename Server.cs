@@ -38,6 +38,8 @@ public class Server : Base_Connection
     }
     catch (NatDeviceNotFoundException e)
     {
+      // No NAT device found, should be able to connect directly to this server
+      // Make sure the server is started and not just printing an error message
       Console.WriteLine(e.Message);
     }
 
