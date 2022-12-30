@@ -12,17 +12,16 @@ public class Base_Connection
   protected BinaryWriter? writer;
   protected List<string> messages = new List<string>();
   protected bool handleStarted;
-  protected Crypt myCrypt = new Crypt();
+  protected PQCrypt myCrypt = new PQCrypt();
   public List<string> MsgHistory => messages;
 
   protected void SendKey()
   {
-    if (myCrypt.localPublicKey_Q.X is not null && myCrypt.localPublicKey_Q.Y is not null)
+    if (myCrypt.localPubParams is not null)
     {
-      SendMsg<string>("ECC_PUB_KEY", false);
-      SendMsg<int>(myCrypt.localPublicKey_Q.X.Length, false);
-      SendMsg<byte[]>(myCrypt.localPublicKey_Q.X, false);
-      SendMsg<byte[]>(myCrypt.localPublicKey_Q.Y, false);
+      SendMsg<string>("KYBER_PUB_KEY", false);
+      SendMsg<int>(myCrypt.localPubParams.GetEncoded().Length, false);
+      SendMsg<byte[]>(myCrypt.localPubParams.GetEncoded(), false);
     }
     else
     {
@@ -119,13 +118,10 @@ public class Base_Connection
           case "exit":
             socket.Close();
             break;
-          case "ECC_PUB_KEY":
+          case "KYBER_PUB_KEY":
             int byteCount = reader.ReadInt32();
-            byte[]? myX = reader.ReadBytes(byteCount);
-            byte[]? myY = reader.ReadBytes(byteCount);
-            myECPoint.X = myX;
-            myECPoint.Y = myY;
-            myCrypt.InitRemotePublicKey(myECPoint);
+            byte[]? myKey = reader.ReadBytes(byteCount);
+            myCrypt.InitRemotePublicKey(myKey);
             break;
           default:
             cmd = myCrypt.DecryptMessage(cmd);
