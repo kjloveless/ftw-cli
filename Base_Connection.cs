@@ -1,5 +1,4 @@
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using ftw_msgr.Crypto;
 
 
@@ -12,21 +11,34 @@ public class Base_Connection
   protected BinaryWriter? writer;
   protected List<string> messages = new List<string>();
   protected bool handleStarted;
-  protected Crypt myCrypt = new Crypt();
+  protected PQCrypt myCrypt = new PQCrypt();
   public List<string> MsgHistory => messages;
 
+  // used by the server to move their public key to the client
   protected void SendKey()
   {
-    if (myCrypt.localPublicKey_Q.X is not null && myCrypt.localPublicKey_Q.Y is not null)
+    if (myCrypt.pubParams is not null)
     {
-      SendMsg<string>("ECC_PUB_KEY", false);
-      SendMsg<int>(myCrypt.localPublicKey_Q.X.Length, false);
-      SendMsg<byte[]>(myCrypt.localPublicKey_Q.X, false);
-      SendMsg<byte[]>(myCrypt.localPublicKey_Q.Y, false);
+      SendMsg<string>("KYBER_PUB_KEY", false);
+      SendMsg<int>(myCrypt.pubParams.GetEncoded().Length, false);
+      SendMsg<byte[]>(myCrypt.pubParams.GetEncoded(), false);
     }
     else
     {
-      Console.WriteLine("Local public key not available.");
+      Console.WriteLine("Public key not available.");
+    }
+  }
+
+  protected void SendCipher()
+  {
+    if (myCrypt.encoded_cipher_text is not null)
+    {
+      SendMsg<string>("KYBER_CIPHER", false);
+      SendMsg<string>(myCrypt.encoded_cipher_text, false);
+    }
+    else
+    {
+      Console.WriteLine("Public key is not available to create cipher.");
     }
   }
 
@@ -108,24 +120,26 @@ public class Base_Connection
   protected void HandleRequest()
   {
     handleStarted = true;
-    ECPoint myECPoint;
     while (socket is not null && socket.Connected && reader is not null)
     {
       var cmd = reader.ReadString();
       if (cmd is not null)
       {
+        int byteCount;
         switch (cmd)
         {
           case "exit":
             socket.Close();
             break;
-          case "ECC_PUB_KEY":
-            int byteCount = reader.ReadInt32();
-            byte[]? myX = reader.ReadBytes(byteCount);
-            byte[]? myY = reader.ReadBytes(byteCount);
-            myECPoint.X = myX;
-            myECPoint.Y = myY;
-            myCrypt.InitRemotePublicKey(myECPoint);
+          case "KYBER_PUB_KEY":
+            byteCount = reader.ReadInt32();
+            byte[]? myKey = reader.ReadBytes(byteCount);
+            myCrypt.InitRemotePublicKey(myKey);
+            SendCipher();
+            break;
+          case "KYBER_CIPHER":
+            myCrypt.generated_cipher_text = Convert.FromBase64String(reader.ReadString());
+            myCrypt.InitRemoteSecret();
             break;
           default:
             cmd = myCrypt.DecryptMessage(cmd);

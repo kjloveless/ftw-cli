@@ -7,7 +7,14 @@ string? text;
 do
 {
   Console.Write("client or server? ");
-  text = Console.ReadLine();
+  if (args is not null && args.Count() > 0 && args[0] is not null) 
+  { 
+      text = args[0];
+  }
+  else 
+  {
+    text = Console.ReadLine();
+  }
   if (string.IsNullOrWhiteSpace(text)) { text = ""; }
 } while (text != "client" && text != "server");
 
@@ -17,7 +24,14 @@ switch (text)
     msgrServer = new Server();
     break;
   case "client":
-    msgrServer = new Client();
+    if (args is not null && args.Count() > 0 && args[1] is not null) 
+    { 
+      msgrServer = new Client(args[1]);
+    }
+    else
+    {
+      msgrServer = new Client();
+    }
     break;
 }
 

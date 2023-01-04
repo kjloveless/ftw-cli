@@ -7,16 +7,24 @@ public class Client : Base_Connection
 {
   public Client(string arg = "")
   {
-    SetupClient();
+    SetupClient(arg);
 
   }
 
   private void SetupClient(string ip = "")
   {
+    string? line;
     try
     {
       Console.WriteLine("Enter an IP address to connect to...");
-      string? line = Console.ReadLine();
+      if (ip is not null) 
+      { 
+        line = ip;
+      }
+      else 
+      {
+        line = Console.ReadLine();
+      }
       ip = string.IsNullOrWhiteSpace(line) ? "localhost" : line;
       if (ip != "localhost")
       {
@@ -36,7 +44,6 @@ public class Client : Base_Connection
       }
       InitComs();
 
-      SendKey();
       Console.WriteLine("Connected to server...");
     }
     catch (SocketException e)
