@@ -12,10 +12,13 @@ public class PQCrypt
 {
   private static SecureRandom random = new SecureRandom();
   private static KyberKemGenerator KyberEncCipher = new KyberKemGenerator(random);
-  private static KyberParameters kyberParameters = KyberParameters.kyber512_aes;
+  private static KyberParameters kyberParameters = KyberParameters.kyber512;
    private AsymmetricCipherKeyPair localACKP;
-   public KyberPublicKeyParameters localPubParams;
+   public KyberPublicKeyParameters pubParams;
+   private KyberPrivateKeyParameters privParams;
    public byte[]? secret;
+   public byte[]? generated_cipher_text;
+   public string? encoded_cipher_text;
 
 
   public PQCrypt()
@@ -25,38 +28,45 @@ public class PQCrypt
     kpGen.Init(genParam);
     localACKP = kpGen.GenerateKeyPair();
 
-    localPubParams = (KyberPublicKeyParameters)localACKP.Public;
-    KyberPrivateKeyParameters privParams = (KyberPrivateKeyParameters)localACKP.Private;
+    pubParams = (KyberPublicKeyParameters)localACKP.Public;
+    privParams = (KyberPrivateKeyParameters)localACKP.Private;
   }
 
   public string DecryptMessage(string ciphertext)
   {
-    // return $"Unable to decrypt: {ciphertext} .\n No remote public key found.";
-    byte[] data = System.Convert.FromBase64String(ciphertext);
-    byte[] rawData;
+    using Aes aes = Aes.Create();
+    aes.Mode = CipherMode.CBC;
+    aes.Padding = PaddingMode.PKCS7;
+    aes.FeedbackSize = 128;
 
-    using Aes aes = AesCng.Create();
+    byte[] cipher = Convert.FromBase64String(ciphertext);
+    Console.WriteLine($"DEC - Ciphertext: {ciphertext}");
+    byte[] rawData;
 
     int ivLength = aes.BlockSize >> 3;
     byte[] ivData = new byte[ivLength];
-    Array.Copy(data, ivData, ivLength);
+    Array.Copy(cipher, ivData, ivLength);
 
     if (secret is not null)
     {
-      aes.Key = secret;
-      aes.IV = ivData;
-      using ICryptoTransform decryptor = aes.CreateDecryptor();
-      using MemoryStream ms = new MemoryStream();
+        aes.Key = secret;
+        aes.IV = ivData;
+        
+        Console.WriteLine($"AES (DEC) secret: {Encoding.UTF8.GetString(secret)}");
+        Console.WriteLine($"AES (DEC) IV: {Encoding.UTF8.GetString(aes.IV)}");
+        ICryptoTransform decryptor = aes.CreateDecryptor();
 
-      CryptoStream cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Write);
-      cs.Write(data, ivLength, data.Length - ivLength);
-      cs.Close();
-      rawData = ms.ToArray();
-      return Encoding.UTF8.GetString(rawData);
+        using MemoryStream ms = new MemoryStream();
+        using CryptoStream cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Write);
+
+        cs.Write(cipher, ivLength, cipher.Length - ivLength);
+        cs.FlushFinalBlock();
+        rawData = ms.ToArray();
+        return $"Decoded Message: {Encoding.UTF8.GetString(rawData)}";
     }
     else
     {
-      return $"Unable to decrypt: {ciphertext} .\n No remote public key found.";
+      return $"Unable to decrypt: {ciphertext} .\n No secret found.";
     }
   }
 
@@ -64,11 +74,19 @@ public class PQCrypt
   {
     if (secret is not null)
     {
-        using Aes aes = AesCng.Create();
+        using Aes aes = Aes.Create();
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        aes.FeedbackSize = 128;
 
         aes.Key = secret;
         aes.GenerateIV();
-        using ICryptoTransform encryptor = aes.CreateEncryptor();
+        
+        Console.WriteLine($"AES (ENC) secret: {Encoding.UTF8.GetString(secret)}");
+        Console.WriteLine($"AES (ENC) IV: {Encoding.UTF8.GetString(aes.IV)}");
+        ICryptoTransform encryptor = aes.CreateEncryptor();
+        
+        byte[] encryptedData;
 
         using MemoryStream ms = new MemoryStream();
 
@@ -83,8 +101,9 @@ public class PQCrypt
             ms.Write(aes.IV, 0, aes.IV.Length);
             cs.Write(rawData, 0, rawData.Length);
             cs.Close();
-            byte[] data = ms.ToArray();
-            return (T?)Convert.ChangeType(Convert.ToBase64String(data), typeof(T));
+            encryptedData = ms.ToArray();
+            Console.WriteLine($"String ENC - Ciphertext: {Convert.ToBase64String(encryptedData)}");
+            return (T?)Convert.ChangeType(Convert.ToBase64String(encryptedData), typeof(T));
         }
         else if (typeof(T) == typeof(byte[]))
         {
@@ -95,9 +114,10 @@ public class PQCrypt
             ms.Write(aes.IV, 0, aes.IV.Length);
             cs.Write(rawData, 0, rawData.Length);
             cs.Close();
-            byte[]? myBytes = ms.ToArray();
-            char[]? myChars = new char[myBytes.Length];
-            Convert.ToBase64CharArray(myBytes, 0, myBytes.Length, myChars, 0);
+            encryptedData = ms.ToArray();
+            char[]? myChars = new char[encryptedData.Length];
+            Convert.ToBase64CharArray(encryptedData, 0, encryptedData.Length, myChars, 0);
+            Console.WriteLine($"Byte[] ENC - Ciphertext: {Convert.ToBase64CharArray(encryptedData, 0, encryptedData.Length, myChars, 0)}");
             return (T?)Convert.ChangeType(myChars, typeof(T));
       }
       else
@@ -111,11 +131,21 @@ public class PQCrypt
     }
   }
 
+  public void InitRemoteSecret()
+  {
+    if (generated_cipher_text is not null)
+    {
+      KyberKemExtractor KyberDecCipher = new KyberKemExtractor(privParams);
+      secret = KyberDecCipher.ExtractSecret(generated_cipher_text);
+    }
+  }
+
   public void InitRemotePublicKey(byte[] encodedRemotePubParams)
   {
-    KyberPublicKeyParameters remotePubParams = new KyberPublicKeyParameters(kyberParameters, encodedRemotePubParams);
-    ISecretWithEncapsulation secWenc = KyberEncCipher.GenerateEncapsulated(remotePubParams);
-    byte[] generated_cipher_text = secWenc.GetEncapsulation();
+    pubParams = new KyberPublicKeyParameters(kyberParameters, encodedRemotePubParams);
+    ISecretWithEncapsulation secWenc = KyberEncCipher.GenerateEncapsulated(pubParams);
+    generated_cipher_text = secWenc.GetEncapsulation();
+    encoded_cipher_text = Convert.ToBase64String(generated_cipher_text);
     secret = secWenc.GetSecret();
   }
 }
