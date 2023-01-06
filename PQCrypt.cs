@@ -12,7 +12,7 @@ public class PQCrypt
 {
   private static SecureRandom random = new SecureRandom();
   private static KyberKemGenerator KyberEncCipher = new KyberKemGenerator(random);
-  private static KyberParameters kyberParameters = KyberParameters.kyber512;
+  private static KyberParameters kyberParameters = KyberParameters.kyber1024_aes;
    private AsymmetricCipherKeyPair localACKP;
    public KyberPublicKeyParameters pubParams;
    private KyberPrivateKeyParameters privParams;
@@ -37,10 +37,9 @@ public class PQCrypt
     using Aes aes = Aes.Create();
     aes.Mode = CipherMode.CBC;
     aes.Padding = PaddingMode.PKCS7;
-    aes.FeedbackSize = 128;
+    aes.KeySize = 256;
 
     byte[] cipher = Convert.FromBase64String(ciphertext);
-    Console.WriteLine($"DEC - Ciphertext: {ciphertext}");
     byte[] rawData;
 
     int ivLength = aes.BlockSize >> 3;
@@ -52,8 +51,6 @@ public class PQCrypt
         aes.Key = secret;
         aes.IV = ivData;
         
-        Console.WriteLine($"AES (DEC) secret: {Encoding.UTF8.GetString(secret)}");
-        Console.WriteLine($"AES (DEC) IV: {Encoding.UTF8.GetString(aes.IV)}");
         ICryptoTransform decryptor = aes.CreateDecryptor();
 
         using MemoryStream ms = new MemoryStream();
@@ -62,7 +59,7 @@ public class PQCrypt
         cs.Write(cipher, ivLength, cipher.Length - ivLength);
         cs.FlushFinalBlock();
         rawData = ms.ToArray();
-        return $"Decoded Message: {Encoding.UTF8.GetString(rawData)}";
+        return $"{Encoding.UTF8.GetString(rawData)}";
     }
     else
     {
@@ -77,13 +74,11 @@ public class PQCrypt
         using Aes aes = Aes.Create();
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.PKCS7;
-        aes.FeedbackSize = 128;
+        aes.KeySize = 256;
 
         aes.Key = secret;
         aes.GenerateIV();
         
-        Console.WriteLine($"AES (ENC) secret: {Encoding.UTF8.GetString(secret)}");
-        Console.WriteLine($"AES (ENC) IV: {Encoding.UTF8.GetString(aes.IV)}");
         ICryptoTransform encryptor = aes.CreateEncryptor();
         
         byte[] encryptedData;
@@ -102,7 +97,7 @@ public class PQCrypt
             cs.Write(rawData, 0, rawData.Length);
             cs.Close();
             encryptedData = ms.ToArray();
-            Console.WriteLine($"String ENC - Ciphertext: {Convert.ToBase64String(encryptedData)}");
+            
             return (T?)Convert.ChangeType(Convert.ToBase64String(encryptedData), typeof(T));
         }
         else if (typeof(T) == typeof(byte[]))
@@ -117,7 +112,7 @@ public class PQCrypt
             encryptedData = ms.ToArray();
             char[]? myChars = new char[encryptedData.Length];
             Convert.ToBase64CharArray(encryptedData, 0, encryptedData.Length, myChars, 0);
-            Console.WriteLine($"Byte[] ENC - Ciphertext: {Convert.ToBase64CharArray(encryptedData, 0, encryptedData.Length, myChars, 0)}");
+            
             return (T?)Convert.ChangeType(myChars, typeof(T));
       }
       else
