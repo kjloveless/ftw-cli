@@ -25,3 +25,5 @@ credit to The Bouncy Castle on Kyber package: https://github.com/bcgit/bc-csharp
 - Use HTTP3, fallback to HTTP2(or 1.1) to account for Apple not enabling by
   default
   - This is to switch to UDP hole punching to establish connections, may need to read through this again (https://tailscale.com/blog/how-nat-traversal-works/)
+
+- Test IPv6 to IPv6, recently I switched to a home 5G Gateway (T-Mobile internet) and they do not support portforwarding or UPnP
