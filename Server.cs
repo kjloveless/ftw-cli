@@ -21,7 +21,7 @@ public class Server : Base_Connection
       NatDevice device = await discoverer.DiscoverDeviceAsync();
 
       // display the NAT's IP address
-      Console.WriteLine("The external IP Address is: {0} ", await device.GetExternalIPAsync());
+      Console.WriteLine($"The external IP Address is: {await device.GetExternalIPAsync()}");
 
       foreach (var mapping in await device.GetAllMappingsAsync())
       {
