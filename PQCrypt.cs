@@ -8,6 +8,10 @@ using Org.BouncyCastle.Security;
 
 namespace ftw_msgr.Crypto;
 
+/// <summary>
+/// This unit is the current encryption unit and uses Kyber KEM with AES.
+/// </summary>
+
 public class PQCrypt
 {
   private static SecureRandom random = new SecureRandom();
