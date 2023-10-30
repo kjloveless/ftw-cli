@@ -24,14 +24,14 @@ switch (text)
     msgrServer = new Server();
     break;
   case "client":
-    if (args is not null && args.Count() > 0 && args[1] is not null) 
-    { 
-      msgrServer = new Client(args[1]);
-    }
-    else
-    {
+    // if (args is not null && args.Count() > 0 && args[1] is not null) 
+    // { 
+    //   msgrServer = new Client(args[1]);
+    // }
+    // else
+    // {
       msgrServer = new Client();
-    }
+    // }
     break;
 }
 

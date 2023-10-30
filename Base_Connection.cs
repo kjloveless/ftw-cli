@@ -143,7 +143,7 @@ public class Base_Connection
             break;
           default:
             cmd = myCrypt.DecryptMessage(cmd);
-            messages.Add(string.Format($"Client: {cmd}"));
+            messages.Add(string.Format($"Received: {cmd}"));
             break;
         }
       }

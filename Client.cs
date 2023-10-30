@@ -5,15 +5,16 @@ namespace ftw_msgr.WebSocket;
 
 public class Client : Base_Connection
 {
-  public Client(string arg = "")
+  public Client()
   {
-    SetupClient(arg);
+    SetupClient();
 
   }
 
-  private void SetupClient(string ip = "")
+  private void SetupClient()
   {
     string? line;
+    string? ip = null;
     try
     {
       Console.WriteLine("Enter an IP address to connect to...");
