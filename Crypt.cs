@@ -3,6 +3,10 @@ using System.Text;
 
 namespace ftw_msgr.Crypto;
 
+/// <summary>
+/// This unit was the original encryption library using DHKE and AES
+/// </summary>
+
 public class Crypt
 {
   private ECDiffieHellman localKey;
