@@ -1,17 +1,3 @@
-```
-  ______             __                           
- /      \           /  |                          
-/$$$$$$  |         _$$ |_            __   __   __ 
-$$ |_ $$/  ______ / $$   |   ______ /  | /  | /  |
-$$   |    /      |$$$$$$/   /      |$$ | $$ | $$ |
-$$$$/     $$$$$$/   $$ | __ $$$$$$/ $$ | $$ | $$ |
-$$ |                $$ |/  |        $$ \_$$ \_$$ |
-$$ |                $$  $$/         $$   $$   $$/ 
-$$/                  $$$$/           $$$$$/$$$$/
-```
-
-http://patorjk.com/software/taag/#p=display&h=0&f=Big%20Money-sw&t=f-t-w
-
 f-t-w is a peer to peer encrypted cli messenger over TCP/IP.
 
 messages are encrypted with AES-256 using a shared secret through Kyber KEM (quantum resistent!)
