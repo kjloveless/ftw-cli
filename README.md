@@ -8,7 +8,7 @@ credit to The Bouncy Castle on Kyber package: https://github.com/bcgit/bc-csharp
 - Improve code clarity, restructure to make more legible
 - Build 'discovery' server to host username -> IP mapping, allowing a hub for users to connect with another at a higher level than IP
 
-- Use HTTP3, fallback to HTTP2(or 1.1) to account for Apple not enabling by
+- Use HTTP3, fallback to HTTP2(or 1.1) to account for Apple not enabling by (might not want to use HTTP3, look into tracking concerns)
   default
   - This is to switch to UDP hole punching to establish connections, may need to read through this again (https://tailscale.com/blog/how-nat-traversal-works/)
 
